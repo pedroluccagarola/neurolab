@@ -23,7 +23,8 @@
      NLScan.abrirCamera()     — Promise<boolean> (pede permissão)
      NLScan.fecharCamera()    — desliga a webcam (a luz da câmera apaga)
      NLScan.startDetection(cb)/stopDetection()
-     NLScan.captureResult()   — Promise<{emotions, comment, isReal} | null>
+     NLScan.captureResult()   — Promise<{emotions (7), leituras, comment, isReal} | null>
+     NLScan.leituras()        — leituras na média agora (0 a 5)
    ═══════════════════════════════════════════════════════════════════ */
 
 const NLScan = (() => {
@@ -41,21 +42,18 @@ const NLScan = (() => {
       scoreThreshold: 0.4, // confiança mínima para considerar um rosto
     }),
 
-    // Número de amostras acumuladas para média suavizada
-    SMOOTHING_SAMPLES: 5,
-
     // ── Calibração da emoção neutra (ajustada na feira) ─────────
+    // Os valores ficam em js/conteudo.js (NL_DADOS.CALIBRACAO), que a tela
+    // "Como a IA chegou nisso" também usa para explicar o resultado.
     // O modelo tende a dar "neutral" alto para rostos em repouso. O boost
     // vale só para ORDENAR: as porcentagens exibidas são as reais.
-    SENSITIVITY_BOOST: 1.5,
-    BOOSTED_EMOTIONS: new Set(['happy','sad','angry','fearful','disgusted','surprised']),
-
-    // Neutral só fica em primeiro se passar de 70%. Abaixo disso, uma
-    // emoção com pelo menos 15% assume o destaque.
     // Ex.: neutral=0.62, happy=0.22 → happy vence
     //      neutral=0.85, happy=0.08 → neutral vence
-    NEUTRAL_DOMINANCE_THRESHOLD: 0.70,
-    SECONDARY_MIN_PCT: 15,
+    SMOOTHING_SAMPLES:           NL_DADOS.CALIBRACAO.AMOSTRAS,
+    SENSITIVITY_BOOST:           NL_DADOS.CALIBRACAO.PESO_OUTRAS,
+    BOOSTED_EMOTIONS: new Set(['happy','sad','angry','fearful','disgusted','surprised']),
+    NEUTRAL_DOMINANCE_THRESHOLD: NL_DADOS.CALIBRACAO.NEUTRO_MIN / 100,
+    SECONDARY_MIN_PCT:           NL_DADOS.CALIBRACAO.OUTRA_MIN,
   };
 
   /* ── ESTADO INTERNO ───────────────────────────────────────────── */
@@ -249,6 +247,9 @@ const NLScan = (() => {
   /** Há pelo menos uma detecção de rosto no buffer? */
   function temRosto() { return _sampleBuffer.length > 0; }
 
+  /** Leituras guardadas para a média agora (0 a 5) — mostrado no HUD. */
+  function leituras() { return _sampleBuffer.length; }
+
   /**
    * Resultado final: média das últimas detecções + uma detecção extra.
    * Retorna null se nenhum rosto foi visto (o HUD pede para tentar de novo).
@@ -258,7 +259,10 @@ const NLScan = (() => {
 
     try {
       const best = await _detectarMelhorRosto();
-      if (best) _sampleBuffer.push(_parseExpressions(best.expressions));
+      if (best) {
+        _sampleBuffer.push(_parseExpressions(best.expressions));
+        if (_sampleBuffer.length > CONFIG.SMOOTHING_SAMPLES) _sampleBuffer.shift();
+      }
     } catch (err) {
       console.warn('[NLScan] Erro na detecção de captura:', err.message);
     }
@@ -268,7 +272,9 @@ const NLScan = (() => {
 
     const dominant = smoothed[0].key;
     return {
-      emotions:  smoothed.slice(0, 3).map(({ key, name, pct }) => ({ key, name, pct })),
+      // as 7, na ordem do resultado (a tela mostra as 3 primeiras)
+      emotions:  smoothed.map(({ key, name, pct }) => ({ key, name, pct })),
+      leituras:  _sampleBuffer.length, // quantas leituras entraram na média
       dominant,
       comment:   NL_DADOS.COMENTARIOS[dominant] || NL_DADOS.COMENTARIOS.neutral,
       isReal:    true,
@@ -279,7 +285,7 @@ const NLScan = (() => {
 
   return {
     carregarModelos, abrirCamera, fecharCamera,
-    startDetection, stopDetection, temRosto, captureResult,
+    startDetection, stopDetection, temRosto, leituras, captureResult,
   };
 
 })();

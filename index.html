@@ -23,6 +23,7 @@
 <script src="lib/face-api.min.js"></script><!-- face-api.js 0.22.2 -->
 <script src="lib/qrcode.min.js"></script><!-- qrcodejs 1.0.0 -->
 <script src="js/conteudo.js"></script>
+<script src="js/explicacao.js"></script>
 <style>
 /* ── RESET ───────────────────────────────────────────────────── */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -419,6 +420,26 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
 .mood-actions{display:flex;justify-content:space-between;gap:8px;margin-top:8px}
 .mood-actions .choice-cancel{width:auto;margin-top:0}
 
+/* Com um painel aberto, o quadro do scanner fica esmaecido (no computador o
+   painel encosta na parte de baixo do quadro) */
+.webcam-zone,.idle-eq{transition:opacity .4s}
+.hud-frame:has(.choice-panel.visible) .webcam-zone{opacity:.18}
+.hud-frame:has(.choice-panel.visible) .idle-eq{opacity:0!important}
+
+/* ── "COMO A IA CHEGOU NISSO" ─────────────────────────────────── */
+.explain-link{display:block;margin:-2px 0 2px auto;padding:2px 0;cursor:pointer;
+  border:none;background:none;color:var(--cyan);opacity:.8;
+  font-family:var(--font-hud);font-size:clamp(8px,1.5vw,10px);letter-spacing:.14em;text-transform:uppercase}
+.explain-link:hover{opacity:1;text-shadow:0 0 10px var(--cyan-glow)}
+.explain-panel{top:88px;bottom:var(--acima-da-base);z-index:17;
+  display:flex;flex-direction:column;border-color:rgba(0,229,255,.4);
+  background:#050914} /* opaco: o resultado não aparece por trás do texto */
+.explain-panel .choice-title{color:var(--cyan)}
+.explain-body{flex:1;min-height:0;overflow-y:auto;padding-right:6px;margin-top:4px;
+  user-select:text;scrollbar-width:thin;scrollbar-color:rgba(0,229,255,.35) transparent}
+.explain-body .xp{--xp-mono:var(--font-hud);--xp-sans:var(--font-ui);--xp-h-size:9px;--xp-p-size:clamp(12px,2.3vw,14px)}
+.explain-panel .choice-cancel{margin-top:8px}
+
 /* ── BASE: AVISO + RODAPÉ ─────────────────────────────────────────
    Empilhados num só bloco (aviso em cima, rodapé embaixo) para nunca
    se sobreporem. O padding deixa o texto dentro das cantoneiras
@@ -703,8 +724,8 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
   <div class="discover-strip" id="discoverStrip">
    <div class="discover-card c">
     <div class="dc-label">Você vai descobrir</div>
-    <div class="dc-value">7 emoções</div>
-    <div class="dc-sub">mapeadas agora</div>
+    <div class="dc-value">7 expressões</div>
+    <div class="dc-sub">estimadas agora</div>
     <div class="dc-bar-track"><div class="dc-bar-fill"></div></div>
    </div>
    <div class="discover-card v">
@@ -715,8 +736,8 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
    </div>
    <div class="discover-card g">
     <div class="dc-label">Você leva</div>
-    <div class="dc-value">Relatório personalizado</div>
-    <div class="dc-sub">dicas suas</div>
+    <div class="dc-value">Relatório + dicas</div>
+    <div class="dc-sub">para o seu resultado</div>
     <div class="dc-bar-track"><div class="dc-bar-fill"></div></div>
    </div>
   </div>
@@ -736,8 +757,8 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
    </div>
    <div class="rail-tick"></div>
    <div class="rail-item">
-    <div class="rail-value">98.6</div>
-    <div class="rail-label">Sync%</div>
+    <div class="rail-value" id="leiturasVal">0/5</div>
+    <div class="rail-label">Leituras</div>
    </div>
   </div>
 
@@ -795,7 +816,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
     <div class="computing-ring-outer"></div>
     <div class="computing-ring"></div>
     <div class="computing-dot-inner"></div>
-    <div class="computing-stage" id="computingStage">MAPEANDO EMOÇÕES</div>
+    <div class="computing-stage" id="computingStage">MÉDIA DAS LEITURAS</div>
     <div class="computing-bar-wrap">
      <div class="computing-bar-inner" id="computingBar"></div>
     </div>
@@ -818,8 +839,8 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
   <div class="prompt-zone" id="promptZone">
    <!-- Textos rotativos da tela de atração — controlados por IdleRotator -->
    <div class="prompt-rotator" id="promptRotator">
-    <div class="prompt-text" id="promptLine1">Descubra seu estado</div>
-    <div class="prompt-text" id="promptLine2" style="color:var(--cyan)">emocional agora</div>
+    <div class="prompt-text" id="promptLine1">Veja o que sua</div>
+    <div class="prompt-text" id="promptLine2" style="color:var(--cyan)">expressão mostra agora</div>
    </div>
    <div class="prompt-sub" id="promptSub" style="margin-top:3px">Posicione o rosto na área indicada</div>
   </div>
@@ -843,6 +864,14 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
    <button class="choice-cancel" onclick="fecharEscolha()">✕ Voltar</button>
   </div>
 
+  <!-- COMO A IA CHEGOU NISSO (painel por cima do resultado) -->
+  <div class="choice-panel explain-panel" id="explainPanel" role="dialog" aria-labelledby="explainTitle">
+   <div class="result-top-bar"></div>
+   <div class="choice-title" id="explainTitle">◈ Como a IA chegou nisso</div>
+   <div class="explain-body" id="explainBody"></div>
+   <button class="choice-cancel" onclick="fecharExplicacao()">✕ Fechar</button>
+  </div>
+
   <!-- AUTOAVALIAÇÃO ANTES DO SCAN -->
   <div class="choice-panel mood-panel" id="moodPanel" role="dialog" aria-labelledby="moodTitle">
    <div class="result-top-bar"></div>
@@ -860,7 +889,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
    <div class="result-top-bar"></div>
 
    <div class="result-header">
-    <div class="result-title">◈ Análise Emocional</div>
+    <div class="result-title">◈ Leitura da expressão</div>
     <div class="result-ts" id="resultTs">--:--</div>
    </div>
 
@@ -884,6 +913,9 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
     <div class="bar-track"><div class="bar-fill green" id="bar3"></div></div>
     <div class="emotion-pct" id="emo3Pct">—</div>
    </div>
+
+   <!-- COMO A IA CHEGOU NISSO -->
+   <button class="explain-link" id="explainLink" onclick="abrirExplicacao()">Como a IA chegou nisso ›</button>
 
    <!-- AI COMMENT -->
    <div class="ai-comment-wrap" id="aiWrap">
@@ -1093,12 +1125,20 @@ async function runBoot() {
   document.getElementById('footerModel').textContent = ok ? 'READY' : 'OFF';
 }
 
-/* fps counter */
+/* Laterais com números reais:
+   FPS      = análises do rosto por segundo (o loop roda 5 vezes por segundo)
+   LEITURAS = quantas leituras estão na média agora (de 5)               */
+const _fpsHist = Array(16).fill(0); // histórico do FPS para o gráfico ao lado
 setInterval(() => {
-  const fps = Math.min(30, Math.round(_fpsTicks * 5));
+  const fps = _fpsTicks;
   document.getElementById('fpsVal').textContent = fps || '—';
+  _fpsHist.push(fps); _fpsHist.shift();
   _fpsTicks = 0;
 }, 1000);
+setInterval(() => {
+  if (!scanActive || _ultimoResultado) return; // só durante o scan com câmera
+  document.getElementById('leiturasVal').textContent = NLScan.leituras() + '/' + NL_DADOS.CALIBRACAO.AMOSTRAS;
+}, 200);
 
 /* ─────────────────────────────────────────────────────────────
    PARTICLES
@@ -1209,8 +1249,11 @@ function initSparklines(){
     c.width=28; c.height=16;
     const ctx=c.getContext('2d');
     const data=Array.from({length:16},()=>Math.random());
+    const real = id === 'sparkR1'; /* FPS: histórico real; os outros são ornamento */
     function draw(){
-      ctx.clearRect(0,0,28,16); data.push(Math.random()); data.shift();
+      ctx.clearRect(0,0,28,16);
+      if (real) { _fpsHist.forEach((v,i)=>{ data[i]=Math.min(1, v/6); }); }
+      else { data.push(Math.random()); data.shift(); }
       ctx.beginPath();
       data.forEach((v,i)=>{
         const x=i*(28/15),y=16-v*13;
@@ -1242,10 +1285,9 @@ function initEqualiser(){
    Gives the visitor the sense that real analysis is happening.
    ───────────────────────────────────────────────────────────── */
 const COMPUTING_STAGES = [
-  'MAPEANDO EXPRESSÕES',
-  'CALIBRANDO EMOÇÕES',
-  'CRUZANDO PADRÕES',
-  'GERANDO PERFIL',
+  'MÉDIA DAS LEITURAS',
+  'APLICANDO CALIBRAÇÃO',
+  'MONTANDO RESULTADO',
 ];
 let _computeInterval = null;
 
@@ -1348,7 +1390,7 @@ async function prepararCamera(){
   }
 
   document.getElementById('camStatus').textContent = 'ATIVA';
-  document.getElementById('scannerLabel').textContent = '▸ ROSTO NA ÁREA ◂';
+  document.getElementById('scannerLabel').textContent = '▸ OLHE PARA A CÂMERA ◂';
   NLScan.startDetection(() => { _fpsTicks++; });
   await sleep(1200);
   return true;
@@ -1587,6 +1629,7 @@ function prepararRelatorio(result){
   const qrCanvas = document.getElementById('qrCanvas');
 
   _resultadoQS = NL_DADOS.codificar({ ...result, antes: _antes });
+  _ultimoResultado = result;
   const relatorioUrl = new URL('relatorio/?' + _resultadoQS, window.location.href).href;
   document.getElementById('reportBtn').href = relatorioUrl;
 
@@ -1615,6 +1658,24 @@ function prepararRelatorio(result){
 function abrirVR() {
   SFX.click();
   window.location.href = 'vr/lab.html' + (_resultadoQS ? '?' + _resultadoQS : '');
+}
+
+/* ─────────────────────────────────────────────────────────────
+   COMO A IA CHEGOU NISSO — painel por cima do resultado
+   O conteúdo vem de js/explicacao.js (o mesmo do relatório).
+   ───────────────────────────────────────────────────────────── */
+let _ultimoResultado = null;
+
+function abrirExplicacao(){
+  if (!_ultimoResultado) return;
+  SFX.click();
+  NL_EXPLICACAO.montar(document.getElementById('explainBody'), _ultimoResultado);
+  document.getElementById('explainBody').scrollTop = 0;
+  document.getElementById('explainPanel').classList.add('visible');
+}
+
+function fecharExplicacao(){
+  document.getElementById('explainPanel').classList.remove('visible');
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -1734,6 +1795,8 @@ function escolherEmocao(key){
    SHOW RESULT
    ───────────────────────────────────────────────────────────── */
 function showResult(result){
+  document.getElementById('leiturasVal').textContent =
+    result.manual ? '—' : (result.leituras || 0) + '/' + NL_DADOS.CALIBRACAO.AMOSTRAS;
 
   sessionCount++;
   document.getElementById('sessionVal').textContent = String(sessionCount).padStart(3,'0');
@@ -1819,6 +1882,9 @@ function resetScan(){
   NLScan.fecharCamera(); /* safety — a câmera nunca fica ligada fora do scan */
   document.getElementById('choicePanel').classList.remove('visible');
   document.getElementById('moodPanel').classList.remove('visible');
+  document.getElementById('explainPanel').classList.remove('visible');
+  _ultimoResultado = null;
+  document.getElementById('leiturasVal').textContent = '0/' + NL_DADOS.CALIBRACAO.AMOSTRAS;
   stopComputing(); /* safety — in case reset is called mid-scan */
 
   const frame = document.getElementById('hudFrame');
@@ -1885,11 +1951,11 @@ function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
    ───────────────────────────────────────────────────────────── */
 const IdleRotator = (() => {
   const FRASES = [
-    ['Descubra seu estado',          'emocional agora'],
+    ['Veja o que sua',               'expressão mostra agora'],
     ['A IA analisa sua expressão',   'em tempo real'],
     ['1 minuto que vai',             'te surpreender'],
-    ['Tecnologia de reconhecimento', 'facial ao vivo'],
-    ['Seu relatório personalizado',  'te espera'],
+    ['Análise de expressão',         'facial ao vivo'],
+    ['Seu relatório com dicas',      'te espera'],
   ];
   const INTERVALO = 4000; /* tempo de cada frase na tela */
   const FADE      = 500;  /* igual ao transition do .prompt-rotator */

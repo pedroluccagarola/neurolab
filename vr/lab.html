@@ -283,8 +283,11 @@ AFRAME.registerComponent('grid-wall', {
    Painel holográfico com dados animados, desenhado em canvas 640×360.
    Redesenha só a cada `interval` ms (conservador para o Quest 3S).
    kind: wave | bars | gauge | status | logo
-   tag:  etiqueta do canto. Só "LIVE" (dado real da sessão) ganha o
-         ponto verde piscando; as demais (CONCEITO, DEMONSTRAÇÃO) não. */
+   tag:  etiqueta do canto. Só "LIVE" (dado da sessão acontecendo agora)
+         ganha o ponto verde piscando. As demais aparecem em âmbar:
+         ILUSTRATIVO (animação, nada é medido), GUIA (ritmo do guia, não a
+         respiração da pessoa), SUA SESSÃO (resultado do scan, não é ao vivo),
+         ESCOLHIDA (pular scan) e DEMONSTRAÇÃO (valores de exemplo). */
 AFRAME.registerComponent('data-panel', {
   schema: {
     title:    { default: 'DADOS' },
@@ -338,11 +341,12 @@ AFRAME.registerComponent('data-panel', {
       c.textAlign = 'left'; c.textBaseline = 'middle';
       c.fillStyle = col;
       c.fillText(this.data.title, 28, 36);
-      // Espectro emocional sem sessão mostra valores de exemplo;
-      // emoção escolhida no "pular scan" não é medição ao vivo
+      // Espectro emocional: resultado do scan (SUA SESSÃO), emoção escolhida
+      // no "pular scan" (ESCOLHIDA) ou valores de exemplo (DEMONSTRAÇÃO)
       const semDados = !(NL.emotions && NL.emotions.length);
-      const tag = this.data.kind === 'bars' && (semDados || NL.manual)
-        ? (semDados ? 'DEMONSTRAÇÃO' : 'ESCOLHIDA') : this.data.tag;
+      const tag = this.data.kind === 'bars'
+        ? (semDados ? 'DEMONSTRAÇÃO' : NL.manual ? 'ESCOLHIDA' : 'SUA SESSÃO')
+        : this.data.tag;
       c.textAlign = 'right';
       if (tag === 'LIVE') {
         const on = Math.floor(t * 2) % 2 === 0;
@@ -395,6 +399,7 @@ AFRAME.registerComponent('data-panel', {
     const bw = (W - 80 - gap * (n - 1)) / n;
     c.font = `16px ${NL_FONT_HUD}`; c.textAlign = 'center';
     emo.forEach(([name, pct], i) => {
+      // a barra pulsa de leve (visual), mas o número escrito é sempre o real
       const v = Math.max(0.04, Math.min(1, pct / 100 + Math.sin(t * 1.3 + i * 1.7) * 0.03));
       const x = x0 + i * (bw + gap), hgt = (bot - top) * v;
       c.fillStyle = nlAlpha(cols[i], 0.15); c.fillRect(x, top, bw, bot - top);
@@ -402,7 +407,7 @@ AFRAME.registerComponent('data-panel', {
       c.fillStyle = '#CBD5E1';
       c.fillText(String(name).toUpperCase().slice(0, 9), x + bw / 2, bot + 22);
       c.fillStyle = cols[i];
-      c.fillText(Math.round(v * 100) + '%', x + bw / 2, bot + 46);
+      c.fillText(Math.round(pct) + '%', x + bw / 2, bot + 46);
     });
   },
 
@@ -528,7 +533,7 @@ body{background:var(--bg);color:var(--white);font-family:var(--font-ui);overflow
   position:fixed;inset:0;z-index:100;
   display:flex;flex-direction:column;align-items:center;
   justify-content:center;gap:14px;
-  background:rgba(8,13,26,.96);
+  background:rgba(8,13,26,.99);
   opacity:0;pointer-events:none;transition:opacity 1.2s}
 #end-screen.visible{opacity:1;pointer-events:auto}
 .end-icon{font-size:32px;color:var(--green);
@@ -787,10 +792,10 @@ body{background:var(--bg);color:var(--white);font-family:var(--font-ui);overflow
 
   <!-- Painéis de dados ao redor (rotação Y do pai = ângulo em torno do visitante) -->
   <a-entity rotation="0 68 0">
-    <a-entity position="0 1.7 -5" data-panel="title:SINAIS DO FUTURO · ONDAS CEREBRAIS; tag:CONCEITO; kind:wave; color:#00E5FF; interval:250"></a-entity>
+    <a-entity position="0 1.7 -5" data-panel="title:SINAIS DO FUTURO · ONDAS CEREBRAIS; tag:ILUSTRATIVO; kind:wave; color:#00E5FF; interval:250"></a-entity>
   </a-entity>
   <a-entity rotation="0 115 0">
-    <a-entity position="0 1.7 -5" data-panel="title:GUIA RESPIRATÓRIO; kind:gauge; color:#00FF88; interval:200"></a-entity>
+    <a-entity position="0 1.7 -5" data-panel="title:GUIA RESPIRATÓRIO; tag:GUIA; kind:gauge; color:#00FF88; interval:200"></a-entity>
   </a-entity>
   <a-entity rotation="0 -68 0">
     <a-entity position="0 1.7 -5" data-panel="title:ESPECTRO EMOCIONAL; kind:bars; color:#7C3AED; interval:500"></a-entity>
@@ -837,7 +842,7 @@ body{background:var(--bg);color:var(--white);font-family:var(--font-ui);overflow
 /* ── FASES (só para o indicador no canto e o painel de status) ─── */
 const PHASES = {
   ENTRADA:    { start:  0, end: 16, label: 'IDENTIFICAÇÃO' },
-  RESULTADO:  { start: 16, end: 28, label: 'SEU ESTADO'    },
+  RESULTADO:  { start: 16, end: 28, label: 'SUA EXPRESSÃO' },
   RESPIRACAO: { start: 28, end: 61, label: 'RESPIRAÇÃO'    },
   REFLEXAO:   { start: 61, end: SESSION_DURATION, label: 'REFLEXÃO' },
 };
@@ -1160,7 +1165,8 @@ function _cenaEntrada() {
   _tela({
     1: 'NEURO LAB',
     2: ['LABORATÓRIO DE SAÚDE DO FUTURO', 0.12],
-    3: 'Sinais antes dos sintomas',
+    3: 'Pesquisa: sinais antes dos sintomas?',
+    4: ['◇ CONCEITO', 0.065, '#FFB800'], // ideia futurista, não algo que o site faz
   });
   _updateBreathColors('idle');
   _updateBreathLabel('');
@@ -1170,7 +1176,7 @@ function _cenaEntrada() {
 function _cenaOlheAoRedor() {
   _tela({
     2: 'OLHE AO REDOR',
-    3: 'Dados acompanhados em tempo real',
+    3: 'Painéis ilustrativos ao seu redor',
   });
   _luzes(0.9, 0.5); // a sala "acende" para o visitante explorar os painéis
 }
@@ -1184,7 +1190,7 @@ function _cenaResultado() {
   if (!dominante) {
     // Sem dados: experiência genérica
     _tela({
-      1: 'SEU ESTADO AGORA',
+      1: 'SUA EXPRESSÃO NO SCAN',
       3: 'Vamos usar o próximo momento para equilibrar sua energia.',
     });
   } else if (_sessionData.manual) {
@@ -1199,7 +1205,7 @@ function _cenaResultado() {
       .map(e => `${e.name}  ${e.pct}%`)
       .join('   ');
     _tela({
-      1: 'SEU ESTADO AGORA',
+      1: 'SUA EXPRESSÃO NO SCAN',
       2: `${String(dominante.name).toUpperCase()}  ${dominante.pct}%`,
       3: secundarias,
     });
@@ -1465,6 +1471,8 @@ function _endSession() {
       : 'Você completou a experiência.<br>Tire o óculos com cuidado.';
   }
   document.getElementById('look-hint').classList.remove('visible');
+  _tela({});              // apaga os textos 3D ("SESSÃO CONCLUÍDA" ficava visível atrás)
+  _updateBreathLabel('');
 
   timerEl.style.display = 'none';
   phaseEl.style.display = 'none';
@@ -1544,26 +1552,28 @@ function _fade(el, to, dur, easing) {
     { property: 'canvas-text.opacity', to, dur, easing });
 }
 
-/** Fade in com delay. size (opcional) sobrepõe o tamanho de fonte da linha só nessa troca. */
-function _setText(el, value, delayS, size) {
+/** Fade in com delay. size e color (opcionais) valem só nessa troca. */
+function _setText(el, value, delayS, size, color) {
   setTimeout(() => {
     el._nlSeq = (el._nlSeq || 0) + 1;
-    if (el._nlBaseSize === undefined) el._nlBaseSize = el.getAttribute('canvas-text').size;
-    el.setAttribute('canvas-text', { value, opacity: 0, size: size || el._nlBaseSize });
+    const atual = el.getAttribute('canvas-text');
+    if (el._nlBaseSize  === undefined) el._nlBaseSize  = atual.size;
+    if (el._nlBaseColor === undefined) el._nlBaseColor = atual.color;
+    el.setAttribute('canvas-text', { value, opacity: 0, size: size || el._nlBaseSize, color: color || el._nlBaseColor });
     _fade(el, 1, 450, 'easeOutQuad');
   }, delayS * 1000);
 }
 
 /**
- * Troca a tela inteira de uma vez: { 1: texto, 2: [texto, tamanho], ... }.
+ * Troca a tela inteira de uma vez: { 1: texto, 2: [texto, tamanho, cor], ... }.
  * Linhas omitidas são apagadas.
  */
 function _tela(linhas) {
   [tL1, tL2, tL3, tL4].forEach((el, i) => {
     const l = linhas[i + 1];
     if (!l) return _clearText(el, 0);
-    const [value, size] = Array.isArray(l) ? l : [l];
-    _setText(el, value, 0, size);
+    const [value, size, color] = Array.isArray(l) ? l : [l];
+    _setText(el, value, 0, size, color);
   });
 }
 

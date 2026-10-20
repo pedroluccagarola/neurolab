@@ -15,6 +15,7 @@
   offline de js/conteudo.js. Nenhuma chamada de rede além dos arquivos.
 -->
 <script src="../js/conteudo.js"></script>
+<script src="../js/explicacao.js"></script>
 <style>
 /* ═══ RESET ════════════════════════════════════════════════════ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -543,6 +544,38 @@ body {
 
 [hidden] { display: none !important; }
 
+/* ═══ COMO A IA CHEGOU NISSO (abre e fecha) ════════════════════ */
+.explica {
+  background: var(--bg2);
+  border: 0.5px solid rgba(0, 229, 255, 0.3);
+  border-radius: 12px;
+  margin: -14px 0 28px;
+  overflow: hidden;
+}
+
+.explica > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--cyan);
+  text-transform: uppercase;
+}
+
+.explica > summary::-webkit-details-marker { display: none; }
+.explica > summary::after { content: '＋'; font-size: 14px; }
+.explica[open] > summary::after { content: '－'; }
+.explica[open] > summary { border-bottom: 0.5px solid rgba(0, 229, 255, 0.15); }
+
+.explica-corpo { padding: 16px; }
+.explica-corpo .xp { --xp-mono: var(--font-mono); --xp-sans: var(--font-sans); --xp-h-size: 9px; --xp-p-size: 13px; }
+
 /* ═══ AUTOAVALIAÇÃO ANTES → DEPOIS ═════════════════════════════ */
 .mood-card {
   background: var(--bg2);
@@ -706,12 +739,12 @@ body {
 
   <!-- EMOÇÃO DOMINANTE -->
   <div class="section-hdr">
-    <span class="section-hdr-label" id="tituloEstado">◈ Estado emocional detectado</span>
+    <span class="section-hdr-label" id="tituloEstado">◈ Expressão predominante</span>
     <div class="section-hdr-line"></div>
   </div>
 
   <div class="dominant-card">
-    <div class="dominant-label" id="dominantLabel">Emoção principal</div>
+    <div class="dominant-label" id="dominantLabel">Expressão principal</div>
     <div class="dominant-name" id="dominantName">—</div>
     <div class="dominant-pct-row">
       <span class="dominant-pct" id="dominantPct">—</span>
@@ -723,6 +756,12 @@ body {
 
   <!-- EMOÇÕES SECUNDÁRIAS -->
   <div class="emotions-list" id="emotionsList"></div>
+
+  <!-- COMO A IA CHEGOU NISSO -->
+  <details class="explica" id="explica">
+    <summary>◈ Como a IA chegou nisso</summary>
+    <div class="explica-corpo" id="explicaCorpo"></div>
+  </details>
 
   <!-- COMENTÁRIO -->
   <div class="section-hdr">
@@ -765,7 +804,7 @@ body {
 
   <!-- DICAS PERSONALIZADAS -->
   <div class="section-hdr">
-    <span class="section-hdr-label">◈ Dicas personalizadas para você</span>
+    <span class="section-hdr-label">◈ Dicas para o seu resultado</span>
     <div class="section-hdr-line"></div>
   </div>
 
@@ -783,12 +822,11 @@ body {
   <div class="science-note">
     <div class="science-note-title">⊕ Como funciona o NEURO LAB</div>
     <p class="science-note-text">
-      O scan emocional usa visão computacional baseada nas pesquisas de Paul Ekman
-      sobre as 7 expressões faciais universais reconhecidas em todas as culturas.
-      A câmera analisa a expressão do rosto e estima o quanto cada emoção está
-      presente naquele momento. A experiência VR usa uma técnica de respiração guiada
-      — inspirar, segurar e soltar em ritmo controlado — que ajuda o corpo a relaxar
-      de forma natural e comprovada.
+      O scan usa visão computacional e se baseia nas pesquisas de Paul Ekman sobre
+      expressões faciais. A câmera analisa o rosto e estima o quanto cada uma de
+      7 expressões aparece naquele momento, o que não é o mesmo que saber o que a
+      pessoa sente. O VR usa uma técnica de respiração guiada (inspirar, segurar e
+      soltar em ritmo controlado) que pode ajudar a desacelerar.
     </p>
   </div>
 
@@ -797,8 +835,8 @@ body {
     <div class="disclaimer-icon">i</div>
     <p class="disclaimer-text">
       Esta é uma experiência educativa de bem-estar tecnológico.
-      Os resultados são gerados por algoritmos de visão computacional e não
-      constituem avaliação médica ou psicológica. Em caso de necessidade,
+      Os resultados são gerados por algoritmos de visão computacional, não
+      constituem avaliação médica ou psicológica e podem errar. Em caso de necessidade,
       consulte um profissional de saúde qualificado.
     </p>
   </div>
@@ -810,12 +848,13 @@ body {
       Esta análise é uma demonstração educativa de bem-estar.
     </p>
     <p class="future-note-text">
-      No futuro, tecnologias como esta poderão identificar sinais de alerta
-      para a saúde antes mesmo dos primeiros sintomas aparecerem — pela
-      expressão facial, cor da pele, padrão de voz ou movimento dos olhos.
+      Pesquisadores estudam se tecnologias como esta poderão, um dia, ajudar a
+      perceber sinais de alerta para a saúde pela expressão facial, pela cor da
+      pele, pela voz ou pelo movimento dos olhos. Ainda é um campo de pesquisa,
+      com muitas perguntas em aberto.
     </p>
     <p class="future-note-text">
-      <strong>O NEURO LAB é um exemplo do que está por vir.</strong>
+      <strong>O NEURO LAB é um convite para conhecer essa discussão.</strong>
     </p>
   </div>
 
@@ -871,7 +910,7 @@ body {
   // Emoções secundárias — alterna violeta e verde, como na feira
   const cores = ['#7C3AED', '#00FF88'];
   const lista = document.getElementById('emotionsList');
-  r.emotions.slice(1).forEach((e, i) => {
+  r.emotions.slice(1, 3).forEach((e, i) => {
     const cor = cores[i % cores.length];
     const row = document.createElement('div');
     row.className = 'emotion-row';
@@ -887,6 +926,15 @@ body {
     lista.appendChild(row);
   });
   if (!lista.children.length) lista.style.marginBottom = '28px';
+
+  // "Como a IA chegou nisso": monta na primeira vez que a seção é aberta
+  const explica = document.getElementById('explica');
+  explica.addEventListener('toggle', () => {
+    if (explica.open && !explica.dataset.montado) {
+      NL_EXPLICACAO.montar(document.getElementById('explicaCorpo'), r);
+      explica.dataset.montado = '1';
+    }
+  });
 
   // Autoavaliação: antes (a) e depois (d), de 1 a 5
   const comp = NL_DADOS.comparar(r.antes, r.depois);

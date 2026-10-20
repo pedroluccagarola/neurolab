@@ -9,7 +9,9 @@
 
    O resultado passa de uma página para outra pela própria URL:
      ?e=happy:72,neutral:20,surprised:5&m=0&t=1760000000000
-       e = até 3 emoções (chave:porcentagem), a primeira é a principal
+       e = as 7 emoções (chave:porcentagem), na ordem do resultado: a primeira
+           é a que ficou em destaque. Links antigos (só 3) continuam válidos.
+       n = quantas leituras do rosto entraram na média (1 a 5)
        m = 1 quando a emoção foi escolhida no "pular scan"
        t = data/hora do scan (ms)
        a = autoavaliação antes do scan (1 a 5, opcional)
@@ -150,15 +152,25 @@ const NL_DADOS = (() => {
     return { diff, texto };
   }
 
+  /* ── CALIBRAÇÃO DO SCAN (usada pelo js/scan.js e explicada em js/explicacao.js) ─
+     Com o rosto em repouso, o modelo tende a marcar "neutral". Ajustado na feira. */
+  const CALIBRACAO = {
+    AMOSTRAS:      5,    // média das últimas 5 leituras (uma a cada 200 ms)
+    NEUTRO_MIN:    70,   // neutro só fica em destaque com 70% ou mais
+    OUTRA_MIN:     15,   // abaixo disso, outra expressão assume com 15% ou mais
+    PESO_OUTRAS:   1.5,  // peso extra das outras expressões só para ORDENAR
+  };
+
   /** Resultado → texto da query string (sem o "?"). */
-  function codificar({ emotions, manual, timestamp, antes, depois }) {
-    const e = emotions.slice(0, 3)
+  function codificar({ emotions, manual, timestamp, antes, depois, leituras }) {
+    const e = emotions.slice(0, 7)
       .map(x => `${x.key}:${Math.round(x.pct)}`)
       .join(',');
     const t = timestamp instanceof Date ? timestamp.getTime() : Date.now();
     let qs = `e=${e}&m=${manual ? 1 : 0}&t=${t}`;
     if (nivel(antes))  qs += `&a=${antes}`;
     if (nivel(depois)) qs += `&d=${depois}`;
+    if (/^[1-9]$/.test(String(leituras ?? ''))) qs += `&n=${leituras}`;
     return qs;
   }
 
@@ -178,7 +190,7 @@ const NL_DADOS = (() => {
       })
       .filter(Boolean)
       .filter((x, i, arr) => arr.findIndex(y => y.key === x.key) === i)
-      .slice(0, 3);
+      .slice(0, 7);
     if (!emotions.length) return null;
 
     const t = Number(p.get('t'));
@@ -189,9 +201,10 @@ const NL_DADOS = (() => {
       timestamp: Number.isFinite(t) && t > 0 ? new Date(t) : null,
       antes:     nivel(p.get('a')),
       depois:    nivel(p.get('d')),
+      leituras:  /^[1-9]$/.test(p.get('n') || '') ? Number(p.get('n')) : null,
     };
   }
 
-  return { EMOCOES, COMENTARIOS, COMENTARIOS_MANUAL, RELATORIO, ESCALA,
+  return { EMOCOES, COMENTARIOS, COMENTARIOS_MANUAL, RELATORIO, ESCALA, CALIBRACAO,
            nivel, comparar, codificar, decodificar };
 })();

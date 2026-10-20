@@ -34,6 +34,7 @@ Na feira, o projeto funcionou com um servidor Node.js no notebook e com o Meta Q
    - **Pular scan:** para quem não quer ou não pode usar a câmera. Basta escolher uma emoção para seguir a demonstração.
 3. No painel de resultado:
    - **Abrir relatório** mostra o relatório nesta tela; o **QR code** abre o mesmo relatório no celular.
+   - **Como a IA chegou nisso** mostra as 7 expressões estimadas, explica a calibração e os limites da IA (também disponível no relatório).
    - **Entrar** abre o laboratório em realidade virtual.
 4. No laboratório VR, clique em **Entrar no laboratório** com o som ligado:
    - **Computador:** arraste com o mouse para olhar ao redor.
@@ -58,7 +59,7 @@ O resultado fica apenas no endereço (URL) do relatório e do VR, por exemplo `r
 | Fontes Rajdhani e Share Tech Mono | Identidade visual (arquivos locais) |
 | GitHub Pages | Hospedagem estática |
 
-A narração foi gerada previamente em MP3 com [edge-tts](https://github.com/rany2/edge-tts) (voz pt-BR-FranciscaNeural), pelo script `versao-feira/gerar_narracao.py`.
+A narração foi gerada previamente em MP3 com [edge-tts](https://github.com/rany2/edge-tts) (voz pt-BR-FranciscaNeural), pelo script `versao-feira/gerar_narracao.py`. Na demonstração, as falas 02 e 03 foram regravadas com a mesma voz e textos revisados, que tratam a saúde do futuro como tema de pesquisa ("…onde pesquisadores estudam como a tecnologia pode ajudar a cuidar da saúde" e "Estes painéis ilustram ideias que a pesquisa ainda explora"). A versão da feira mantém as falas originais.
 
 **Versão da feira ([`versao-feira/`](versao-feira/))**
 
