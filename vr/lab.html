@@ -96,7 +96,9 @@ function nlMMSS(s)        { return `${String(Math.floor(s / 60)).padStart(2, '0'
    Texto 3D renderizado num canvas 2D → textura num plano.
    Atributos: value, color, size (altura da fonte em metros),
    maxWidth (metros, quebra de linha automática), weight, spacing (em),
-   glow (0–1), opacity (animável: property "canvas-text.opacity").    */
+   glow (0–1), opacity (animável: property "canvas-text.opacity"),
+   bg (cor de fundo do painel, '' = sem fundo), ppm (pixels por metro
+   da textura) e onTop (desenha por cima de tudo, sem ser escondido).  */
 AFRAME.registerComponent('canvas-text', {
   schema: {
     value:    { default: '' },
@@ -107,6 +109,9 @@ AFRAME.registerComponent('canvas-text', {
     spacing:  { default: 0 },
     glow:     { default: 0.5 },
     opacity:  { default: 1 },
+    bg:       { default: '' },
+    ppm:      { default: 512 },
+    onTop:    { default: false },
   },
 
   init() {
@@ -116,13 +121,17 @@ AFRAME.registerComponent('canvas-text', {
     this.material = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, opacity: 0 });
     this.mesh     = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), this.material);
     this.mesh.renderOrder = 10; // desenhado depois da esfera transparente
+    if (this.data.onTop) {      // legenda: nunca fica atrás da esfera ou dos painéis
+      this.material.depthTest = false;
+      this.mesh.renderOrder = 999;
+    }
     this.mesh.visible = false;
     this.el.setObject3D('mesh', this.mesh);
   },
 
   update(old) {
     const d = this.data;
-    const changed = ['value', 'color', 'size', 'maxWidth', 'weight', 'spacing', 'glow']
+    const changed = ['value', 'color', 'size', 'maxWidth', 'weight', 'spacing', 'glow', 'bg', 'ppm']
       .some(k => d[k] !== old[k]);
     if (changed) this._draw(); // animações de opacidade não redesenham o canvas
     this.material.opacity = d.opacity;
@@ -133,7 +142,7 @@ AFRAME.registerComponent('canvas-text', {
     const d = this.data;
     if (!d.value) return;
 
-    const PPM  = 512;                         // pixels por metro
+    const PPM  = d.ppm;                       // pixels por metro
     const px   = Math.round(d.size * PPM);
     const pad  = Math.ceil(px * 0.45);
     const ctx  = this.ctx;
@@ -163,6 +172,12 @@ AFRAME.registerComponent('canvas-text', {
 
     this.canvas.width  = w;   // redimensionar zera o estado do contexto
     this.canvas.height = h;
+    if (d.bg) {                               // painel escuro + fio ciano à esquerda
+      ctx.fillStyle = d.bg;
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = '#00E5FF';
+      ctx.fillRect(0, 0, Math.max(4, Math.round(px * 0.14)), h);
+    }
     applyFont();
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
@@ -189,6 +204,63 @@ AFRAME.registerComponent('canvas-text', {
     this.mesh.geometry.dispose();
     this.material.dispose();
     this.el.removeObject3D('mesh');
+  },
+});
+
+/* ── legenda-vr ─────────────────────────────────────────────────────
+   Painel da legenda no VR imersivo (no modo imersivo os elementos HTML
+   não aparecem). Fica a LEGENDA_VR.distancia à frente, um pouco abaixo
+   da linha dos olhos, e só gira para acompanhar a cabeça quando a pessoa
+   vira mais que LEGENDA_VR.seguirApos — preso ao rosto, cansa a vista.
+   Ajustes de conforto do Quest: todos em LEGENDA_VR, logo abaixo.      */
+const LEGENDA_VR = {
+  distancia:  1.6,   // metros até o painel
+  abaixo:     4.5,   // graus abaixo da linha dos olhos: entre os textos do laboratório
+                     // (logo acima dos olhos) e o topo dos anéis da esfera (≈ 7° abaixo)
+  seguirApos: 20,    // graus de giro da cabeça antes de o painel acompanhar
+  suavidade:  250,   // ms: quanto maior, mais devagar ele alcança a cabeça
+  letra:      0.05,  // metros de altura da letra (≈ 1,75° de ângulo a 1,6 m)
+  largura:    1.2,   // metros de largura máxima (≈ 40° a 1,6 m): até 2 linhas
+};
+
+AFRAME.registerComponent('legenda-vr', {
+  init() {
+    this.pos  = new THREE.Vector3();
+    this.quat = new THREE.Quaternion();
+    this.eul  = new THREE.Euler(0, 0, 0, 'YXZ');
+    this.yaw  = null;
+    this.seguindo = false;
+    this.el.object3D.rotation.order = 'YXZ';
+    this.el.object3D.visible = false;
+    this.el.setAttribute('canvas-text', { size: LEGENDA_VR.letra, maxWidth: LEGENDA_VR.largura });
+  },
+
+  tick(t, dt) {
+    const o   = this.el.object3D;
+    const cam = this.el.sceneEl.camera;
+    const ct  = this.el.getAttribute('canvas-text');
+    o.visible = !!cam && this.el.sceneEl.is('vr-mode') && NL.legendasLigadas && !!(ct && ct.value);
+    if (!cam) return;
+
+    cam.getWorldPosition(this.pos);
+    cam.getWorldQuaternion(this.quat);
+    this.eul.setFromQuaternion(this.quat, 'YXZ');
+    const alvo = this.eul.y;
+    if (this.yaw === null) this.yaw = alvo;
+
+    const grau = Math.PI / 180;
+    let diff = alvo - this.yaw;
+    diff = Math.atan2(Math.sin(diff), Math.cos(diff)); // entre -180° e 180°
+    if (Math.abs(diff) > LEGENDA_VR.seguirApos * grau) this.seguindo = true;
+    if (this.seguindo) {
+      this.yaw += diff * (1 - Math.exp(-(dt || 16) / LEGENDA_VR.suavidade));
+      if (Math.abs(diff) < 2 * grau) this.seguindo = false;
+    }
+
+    const d = LEGENDA_VR.distancia;
+    const queda = Math.tan(LEGENDA_VR.abaixo * grau) * d;
+    o.position.set(this.pos.x - Math.sin(this.yaw) * d, this.pos.y - queda, this.pos.z - Math.cos(this.yaw) * d);
+    o.rotation.set(-Math.atan2(queda, d), this.yaw, 0); // inclinado para o olho
   },
 });
 
@@ -553,6 +625,26 @@ body{background:var(--bg);color:var(--white);font-family:var(--font-ui);overflow
   font-family:var(--font-hud);font-size:12px;
   color:rgba(0,229,255,.45);letter-spacing:.1em;display:none}
 
+/* ── LEGENDAS (computador e celular) ─────────────────────────── */
+#legenda{position:fixed;left:50%;bottom:calc(62px + env(safe-area-inset-bottom));
+  transform:translateX(-50%);z-index:55;pointer-events:none;
+  width:max-content;max-width:min(720px,calc(100% - 32px));
+  padding:9px 16px 10px 18px;background:rgba(8,13,26,.84);
+  border-left:3px solid var(--cyan);box-shadow:0 6px 24px rgba(0,0,0,.45);
+  -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
+  font-family:var(--font-ui);font-weight:600;font-size:clamp(16px,2.3vw,23px);
+  line-height:1.35;letter-spacing:.01em;color:#FFFFFF;text-align:center;
+  opacity:0;transition:opacity .25s}
+#legenda.visible{opacity:1}
+.cc-btn{position:fixed;top:10px;right:76px;z-index:60;display:none;cursor:pointer;
+  padding:4px 8px;border:1px solid rgba(0,229,255,.55);background:rgba(8,13,26,.6);
+  color:var(--cyan);font-family:var(--font-hud);font-size:12px;letter-spacing:.12em}
+.cc-btn[aria-pressed="false"]{border-color:rgba(100,116,139,.6);color:var(--muted);text-decoration:line-through}
+.entry-cc{margin-top:-6px;padding:6px 12px;cursor:pointer;
+  border:1px solid rgba(0,229,255,.45);background:none;color:var(--cyan);
+  font-family:var(--font-hud);font-size:clamp(9px,2.4vw,11px);letter-spacing:.14em;text-transform:uppercase}
+.entry-cc[aria-pressed="false"]{border-color:rgba(100,116,139,.6);color:var(--muted)}
+
 /* ── FASE INDICATOR ──────────────────────────────────────────── */
 #phase-indicator{
   position:fixed;top:16px;left:16px;z-index:50;
@@ -631,6 +723,7 @@ body{background:var(--bg);color:var(--white);font-family:var(--font-ui);overflow
     ▶ ENTRAR NO LABORATÓRIO
   </button>
   <div class="entry-controls" id="entryControls">Com som ligado · Arraste para olhar ao redor</div>
+  <button class="entry-cc" id="entryCc" onclick="_alternarLegendas()" aria-pressed="true">Legendas: ligadas</button>
   <div class="entry-note">NEURO LAB · Expotec 2026 · Demo</div>
 </div>
 
@@ -638,6 +731,8 @@ body{background:var(--bg);color:var(--white);font-family:var(--font-ui);overflow
 <div id="session-timer">01:14</div>
 <div id="phase-indicator">FASE 1</div>
 <div id="look-hint">◂ Arraste para olhar ao redor ▸</div>
+<button class="cc-btn" id="ccBtn" onclick="_alternarLegendas()" aria-pressed="true" title="Legendas ligadas (tecla C)">CC</button>
+<div id="legenda" role="status" aria-live="polite"></div>
 
 <!-- ── TELA DE ENCERRAMENTO ─────────────────────────────────────── -->
 <div id="end-screen">
@@ -818,12 +913,21 @@ body{background:var(--bg);color:var(--white);font-family:var(--font-ui);overflow
     material="shader:flat; color:#00FF88; wireframe:true; opacity:0.3; transparent:true"
     animation="property:rotation; to:360 0 360; dur:55000; loop:true; easing:linear"></a-dodecahedron>
 
+  <!-- Legenda no VR imersivo (posição e tamanho em LEGENDA_VR) -->
+  <a-entity id="legenda3d" legenda-vr
+    canvas-text="color:#FFFFFF; weight:600; glow:0; bg:rgba(8,13,26,0.88); ppm:1024; onTop:true; opacity:1">
+  </a-entity>
+
   <!-- Câmera -->
   <a-entity id="rig" position="0 0 0">
     <a-camera position="0 1.6 0"
       look-controls="enabled:true"
       wasd-controls="enabled:false">
     </a-camera>
+    <!-- Controles do Quest: botão A ou X liga/desliga as legendas.
+         model:false = sem baixar o modelo 3D do controle (nada de rede). -->
+    <a-entity id="controleDireito"  oculus-touch-controls="hand: right; model: false"></a-entity>
+    <a-entity id="controleEsquerdo" oculus-touch-controls="hand: left; model: false"></a-entity>
   </a-entity>
 
 </a-scene>
@@ -888,6 +992,37 @@ const TIMELINE = [
   // na demo o relatório abre pelo botão da tela final.
 ];
 
+/* ── LEGENDAS DA NARRAÇÃO ───────────────────────────────────────────
+   O mesmo texto de cada MP3 (vr/audio/). Falas longas vêm em partes, para
+   ter no máximo 2 linhas na tela; cada parte fica na tela proporcional ao
+   seu tamanho. A legenda entra junto com a fala e sai quando a voz termina
+   (+ LEGENDA_FOLGA) ou quando a próxima fala começa. Se o áudio não
+   carregar, a legenda aparece mesmo assim (tempo estimado pelo texto).
+   Ao mudar uma fala, regravar o MP3 com o mesmo texto.               */
+const LEGENDAS = {
+  '01_boas_vindas':       'Bem-vindo ao NEURO LAB.',
+  '02_laboratorio':       ['Este é um laboratório de saúde do futuro,',
+                           'onde pesquisadores estudam como a tecnologia pode ajudar a cuidar da saúde.'],
+  '03_olhe_ao_redor':     ['Olhe ao seu redor.', 'Estes painéis ilustram ideias que a pesquisa ainda explora.'],
+  '04_emocao_feliz':      'Durante o scan, sua expressão mostrou sinais de alegria.',
+  '04_emocao_tranquilo':  'Durante o scan, sua expressão mostrou sinais de tranquilidade.',
+  '04_emocao_surpreso':   'Durante o scan, sua expressão mostrou sinais de surpresa.',
+  '04_emocao_triste':     'Durante o scan, sua expressão mostrou sinais de reflexão.',
+  '04_emocao_irritado':   'Durante o scan, sua expressão mostrou sinais de tensão.',
+  '04_emocao_apreensivo': 'Durante o scan, sua expressão mostrou sinais de apreensão.',
+  '04_emocao_incomodado': 'Durante o scan, sua expressão mostrou sinais de desconforto.',
+  '04_emocao_generica':   ['Seu estado foi registrado.', 'Vamos explorar este momento juntos.'],
+  '05_nao_diagnostico':   ['Isto não é um diagnóstico.', 'É um retrato deste momento, e nenhuma imagem sua foi gravada.'],
+  '06_respirar':          ['Agora olhe para a esfera à sua frente.', 'Vamos respirar juntos.'],
+  '07_inspire':           'Inspire devagar.',
+  '08_segure':            'Segure.',
+  '09_solte_devagar':     'Agora solte, bem devagar.',
+  '10_de_novo':           'De novo. Inspire.',
+  '11_solte':             'Solte.',
+  '12_reflexao':          ['Você acabou de dedicar um minuto a você.', 'Isso também é cuidar da saúde.'],
+};
+const LEGENDA_FOLGA = 0.6; // s que a legenda fica depois do fim da voz
+
 /* BREATH_CYCLES, BREATH_LABELS, SESSION_DURATION e limites da esfera
    estão no <head>, junto do componente breath-controller. */
 
@@ -904,6 +1039,15 @@ let _timelineLoop   = null;
 let _audioCtx    = null;        // AudioContext criado no clique em ENTRAR
 const _audios      = new Map(); // nome → Promise<AudioBuffer | null>
 const _audioFalhas = new Set(); // nomes que falharam (nova tentativa no clique)
+const _audioOk     = new Map(); // nome → AudioBuffer carregado (a legenda usa o fim da voz)
+
+let _legendaFila  = [];        // partes da fala atual: [{ texto, ini, fim }] em s da sessão
+let _legendaAtual = null;      // texto na tela agora
+
+/* Preferência guardada só neste navegador (não é dado pessoal, nada é enviado) */
+NL.legendasLigadas = (() => {
+  try { return localStorage.getItem('neurolab-legendas') !== '0'; } catch { return true; }
+})();
 const _audioVivo   = new Set(); // fontes tocando agora (paradas no encerramento)
 
 /* ── REFS DOM ────────────────────────────────────────────────────── */
@@ -1031,7 +1175,7 @@ async function _detectarModo() {
   const celular = AFRAME.utils.device.isMobile();
   const textos = (imersivo) => {
     document.getElementById('entryControls').textContent = imersivo
-      ? 'Com o óculos: a sessão abre em VR imersivo'
+      ? 'Com o óculos: a sessão abre em VR imersivo · botão A liga/desliga as legendas'
       : celular
         ? 'Com som ligado · Gire o celular ou arraste para olhar ao redor'
         : 'Com som ligado · Arraste com o mouse para olhar ao redor';
@@ -1098,6 +1242,7 @@ async function startExperience() {
   // Mostrar overlays
   timerEl.style.display   = 'block';
   phaseEl.style.display   = 'block';
+  document.getElementById('ccBtn').style.display = 'block';
 
   // Quest: entrar em VR imersivo (WebXR). Computador e celular: fica na tela.
   // A detecção costuma terminar antes do clique; se não, espera até 0,8 s
@@ -1144,9 +1289,16 @@ function _iniciarLinhaDoTempo() {
         item.cena();
       }
       if (item.audio) {
-        _tocar(typeof item.audio === 'function' ? item.audio() : item.audio, item.t);
+        const candidatos = [].concat(typeof item.audio === 'function' ? item.audio() : item.audio);
+        _tocar(candidatos, item.t);
+        const proxima = TIMELINE.slice(proximo).find(i => i.audio);
+        _legendaAgendar(candidatos, item.t, proxima ? proxima.t : SESSION_DURATION);
       }
     }
+
+    // Legenda: a parte cujo intervalo contém o instante atual
+    const parte = _legendaFila.find(p => t >= p.ini && t < p.fim);
+    _legendaMostrar(parte ? parte.texto : '');
 
     // Indicador de fase no canto e no painel de status
     const fase = Object.values(PHASES).find(p => t >= p.start && t < p.end);
@@ -1242,6 +1394,75 @@ function _luzes(violeta, verde) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   LEGENDAS — faixa HTML (computador/celular) e painel 3D (Quest)
+   ══════════════════════════════════════════════════════════════ */
+
+/** Monta as partes da legenda de uma fala: mesmo arquivo que vai tocar. */
+function _legendaAgendar(candidatos, inicio, limite) {
+  const nome  = candidatos.find(n => _audioOk.has(n)) || candidatos[0];
+  const partes = [].concat(LEGENDAS[nome] || []);
+  if (!partes.length) return;
+  const buf  = _audioOk.get(nome);
+  const total = partes.reduce((n, p) => n + p.length, 0);
+  const voz  = buf ? _audioFimDaVoz(buf) : Math.max(1.6, total * 0.065); // sem áudio: estimativa
+  const fim  = Math.min(inicio + voz + LEGENDA_FOLGA, limite);
+  let ini = inicio, acumulado = 0;
+  _legendaFila = partes.map((texto, i) => {
+    acumulado += texto.length;
+    const parteFim = i === partes.length - 1 ? fim : inicio + voz * (acumulado / total);
+    const p = { texto, ini, fim: parteFim };
+    ini = parteFim;
+    return p;
+  });
+}
+
+/** Mostra (ou apaga, com '') o texto na faixa 2D e no painel 3D. */
+function _legendaMostrar(texto) {
+  if (!NL.legendasLigadas) texto = '';
+  if (texto === _legendaAtual) return;
+  _legendaAtual = texto;
+  const faixa = document.getElementById('legenda');
+  if (texto) faixa.textContent = texto;
+  faixa.classList.toggle('visible', !!texto);
+  document.getElementById('legenda3d').setAttribute('canvas-text', 'value', texto);
+}
+
+/** Botão CC, opção da entrada, tecla C e botões A/X do Quest. */
+function _alternarLegendas() {
+  NL.legendasLigadas = !NL.legendasLigadas;
+  try { localStorage.setItem('neurolab-legendas', NL.legendasLigadas ? '1' : '0'); } catch { /* sem armazenamento */ }
+  _atualizarBotoesLegenda();
+  // reaplica na hora: ligar mostra a parte da fala atual, desligar apaga
+  const t = _sessionStarted ? _agora() : -1;
+  const parte = _legendaFila.find(p => t >= p.ini && t < p.fim);
+  _legendaAtual = null;
+  _legendaMostrar(parte ? parte.texto : '');
+  console.log('[VR] Legendas', NL.legendasLigadas ? 'ligadas' : 'desligadas');
+}
+
+function _atualizarBotoesLegenda() {
+  const on = NL.legendasLigadas;
+  const cc = document.getElementById('ccBtn');
+  cc.setAttribute('aria-pressed', String(on));
+  cc.title = on ? 'Legendas ligadas (tecla C)' : 'Legendas desligadas (tecla C)';
+  const entrada = document.getElementById('entryCc');
+  entrada.setAttribute('aria-pressed', String(on));
+  entrada.textContent = on ? 'Legendas: ligadas' : 'Legendas: desligadas';
+}
+
+document.addEventListener('keydown', e => {
+  if ((e.key === 'c' || e.key === 'C') && !e.ctrlKey && !e.metaKey && !e.altKey) _alternarLegendas();
+});
+document.addEventListener('DOMContentLoaded', () => {
+  _atualizarBotoesLegenda();
+  ['controleDireito', 'controleEsquerdo'].forEach(id => {
+    const c = document.getElementById(id);
+    c.addEventListener('abuttondown', _alternarLegendas);
+    c.addEventListener('xbuttondown', _alternarLegendas);
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════
    NARRAÇÃO — MP3 em vr/audio/ tocados via Web Audio API
    Um AudioContext desbloqueado no clique vale para todas as falas,
    continua tocando dentro do WebXR e não depende de um toque por
@@ -1302,7 +1523,9 @@ async function _audioCarregar(nome) {
     const resp = await fetch(AUDIO_DIR + nome + AUDIO_EXT);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const dados = await resp.arrayBuffer();
-    return await _audioCtx.decodeAudioData(dados);
+    const buffer = await _audioCtx.decodeAudioData(dados);
+    _audioOk.set(nome, buffer);
+    return buffer;
   } catch (e) {
     console.warn(`[VR][áudio] ${nome}${AUDIO_EXT} indisponível (${e.message || e}) — essa fala ficará em silêncio`);
     _audioFalhas.add(nome);
@@ -1473,6 +1696,9 @@ function _endSession() {
   document.getElementById('look-hint').classList.remove('visible');
   _tela({});              // apaga os textos 3D ("SESSÃO CONCLUÍDA" ficava visível atrás)
   _updateBreathLabel('');
+  _legendaFila = [];
+  _legendaMostrar('');
+  document.getElementById('ccBtn').style.display = 'none';
 
   timerEl.style.display = 'none';
   phaseEl.style.display = 'none';

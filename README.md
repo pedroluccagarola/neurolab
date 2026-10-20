@@ -40,6 +40,7 @@ Na feira, o projeto funcionou com um servidor Node.js no notebook e com o Meta Q
    - **Computador:** arraste com o mouse para olhar ao redor.
    - **Celular:** gire o aparelho ou arraste com o dedo.
    - **Meta Quest:** abra o link no navegador do Quest; a sessão entra em VR imersivo.
+   - **Legendas:** a narração tem legendas sincronizadas, ligadas por padrão. Para ligar ou desligar, use o botão **CC** (ou a tecla **C**) no computador e no celular, a opção na tela de entrada ou, no Quest, o botão **A** do controle.
 5. Ao final, a mesma pergunta é feita de novo e a tela de encerramento leva ao relatório.
 6. O relatório mostra a autoavaliação de antes e de depois, com a diferença entre elas.
 
@@ -129,6 +130,7 @@ O código foi escrito com o **Claude** como principal ferramenta de desenvolvime
 - O vídeo da webcam é analisado pelo face-api.js no próprio navegador. Nenhum quadro é gravado, exportado ou enviado pela rede.
 - A câmera só é ligada ao clicar em **Iniciar scan emocional** e é desligada logo após a captura.
 - O resultado (as porcentagens e, se a pessoa responder, a autoavaliação de 1 a 5) fica no endereço do relatório; não há banco de dados nem servidor na demonstração.
+- A única informação guardada no navegador é a preferência de legendas (ligadas ou desligadas), que não sai do aparelho.
 - Os dados das sessões da feira não fazem parte deste repositório.
 
 ## Aviso
