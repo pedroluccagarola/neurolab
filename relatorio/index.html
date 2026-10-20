@@ -544,6 +544,24 @@ body {
 
 [hidden] { display: none !important; }
 
+/* ═══ "EM DESTAQUE PELA CALIBRAÇÃO" (cartão principal) ═════════ */
+.calib-note {
+  display: inline-block;
+  margin-top: 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.calib-note span {
+  color: var(--cyan);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* ═══ COMO A IA CHEGOU NISSO (abre e fecha) ════════════════════ */
 .explica {
   background: var(--bg2);
@@ -752,6 +770,7 @@ body {
         <div class="dominant-bar-fill" id="dominantBar" style="width: 0%"></div>
       </div>
     </div>
+    <a class="calib-note" id="calibNote" href="#explica" hidden>Em destaque pela calibração · <span>ver explicação</span></a>
   </div>
 
   <!-- EMOÇÕES SECUNDÁRIAS -->
@@ -927,8 +946,16 @@ body {
   });
   if (!lista.children.length) lista.style.marginBottom = '28px';
 
-  // "Como a IA chegou nisso": monta na primeira vez que a seção é aberta
+  // "Como a IA chegou nisso": monta na primeira vez que a seção é aberta.
+  // Começa fechada; o link do cartão principal abre e rola até ela.
   const explica = document.getElementById('explica');
+  const nota = document.getElementById('calibNote');
+  nota.hidden = r.manual || !NL_DADOS.destaquePelaCalibracao(r.emotions);
+  nota.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    explica.open = true;
+    explica.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
   explica.addEventListener('toggle', () => {
     if (explica.open && !explica.dataset.montado) {
       NL_EXPLICACAO.montar(document.getElementById('explicaCorpo'), r);

@@ -431,6 +431,12 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
   border:none;background:none;color:var(--cyan);opacity:.8;
   font-family:var(--font-hud);font-size:clamp(8px,1.5vw,10px);letter-spacing:.14em;text-transform:uppercase}
 .explain-link:hover{opacity:1;text-shadow:0 0 10px var(--cyan-glow)}
+.calib-note{display:block;margin:-6px 0 10px;padding:0;cursor:pointer;border:none;background:none;
+  font-family:var(--font-hud);font-size:clamp(7px,1.4vw,9px);letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted);text-align:left}
+.calib-note span{color:var(--cyan);text-decoration:underline;text-underline-offset:2px}
+.calib-note:hover span{text-shadow:0 0 8px var(--cyan-glow)}
+.calib-note[hidden]{display:none}
 .explain-panel{top:88px;bottom:var(--acima-da-base);z-index:17;
   display:flex;flex-direction:column;border-color:rgba(0,229,255,.4);
   background:#050914} /* opaco: o resultado não aparece por trás do texto */
@@ -899,6 +905,8 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
     <div class="bar-track"><div class="bar-fill cyan" id="bar1"></div></div>
     <div class="emotion-pct" id="emo1Pct">—</div>
    </div>
+   <!-- quando a calibração mudou o destaque (ex.: Feliz 22% com neutro 62%) -->
+   <button class="calib-note" id="calibNote" onclick="abrirExplicacao()" hidden>Em destaque pela calibração · <span>ver explicação</span></button>
 
    <div class="result-divider"></div>
 
@@ -1820,6 +1828,9 @@ function showResult(result){
   SFX.result(); /* now in sync with panel appearing */
 
   /* staggered emotion rows — dominant first, then secondaries */
+  /* calibração mudou o destaque? (ex.: Feliz 22% com neutro 62%) */
+  document.getElementById('calibNote').hidden = !!result.manual || !NL_DADOS.destaquePelaCalibracao(result.emotions);
+
   /* pular scan: só a emoção escolhida, com ✓ no lugar da porcentagem */
   [0,1,2].forEach(i => document.getElementById(`erow${i+1}`).classList.toggle('off', !result.emotions[i]));
   result.emotions.slice(0,3).forEach((e,i) => {
@@ -1883,6 +1894,7 @@ function resetScan(){
   document.getElementById('choicePanel').classList.remove('visible');
   document.getElementById('moodPanel').classList.remove('visible');
   document.getElementById('explainPanel').classList.remove('visible');
+  document.getElementById('calibNote').hidden = true;
   _ultimoResultado = null;
   document.getElementById('leiturasVal').textContent = '0/' + NL_DADOS.CALIBRACAO.AMOSTRAS;
   stopComputing(); /* safety — in case reset is called mid-scan */

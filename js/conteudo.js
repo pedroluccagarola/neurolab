@@ -31,6 +31,18 @@ const NL_DADOS = (() => {
     disgusted: 'Incomodado',
   };
 
+  // Nome da categoria no modelo do face-api (em inglês), traduzido.
+  // Mostrado entre parênteses na tela "Como a IA chegou nisso".
+  const MODELO = {
+    happy:     'alegria',
+    neutral:   'neutro',
+    surprised: 'surpresa',
+    sad:       'tristeza',
+    angry:     'raiva',
+    fearful:   'medo',
+    disgusted: 'nojo',
+  };
+
   // Tom do relatório da feira: fala de sinais na expressão, sem afirmar o que
   // a pessoa sente e sem termos técnicos.
   const COMENTARIOS = {
@@ -161,6 +173,15 @@ const NL_DADOS = (() => {
     PESO_OUTRAS:   1.5,  // peso extra das outras expressões só para ORDENAR
   };
 
+  /**
+   * A calibração mudou o destaque? Verdadeiro quando outra expressão tem
+   * porcentagem maior que a do destaque (ex.: Feliz 22% em destaque, neutro 62%).
+   */
+  function destaquePelaCalibracao(emotions) {
+    if (!emotions || emotions.length < 2) return false;
+    return emotions.slice(1).some(e => e.pct > emotions[0].pct);
+  }
+
   /** Resultado → texto da query string (sem o "?"). */
   function codificar({ emotions, manual, timestamp, antes, depois, leituras }) {
     const e = emotions.slice(0, 7)
@@ -205,6 +226,6 @@ const NL_DADOS = (() => {
     };
   }
 
-  return { EMOCOES, COMENTARIOS, COMENTARIOS_MANUAL, RELATORIO, ESCALA, CALIBRACAO,
+  return { EMOCOES, MODELO, destaquePelaCalibracao, COMENTARIOS, COMENTARIOS_MANUAL, RELATORIO, ESCALA, CALIBRACAO,
            nivel, comparar, codificar, decodificar };
 })();

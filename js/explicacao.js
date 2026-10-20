@@ -30,7 +30,7 @@ const NL_EXPLICACAO = (() => {
 .xp-p{font-size:var(--xp-p-size,13px);line-height:1.6;color:var(--xp-off)}
 .xp-p + .xp-p{margin-top:6px}
 .xp-p b{color:#fff;font-weight:700}
-.xp-row{display:grid;grid-template-columns:minmax(0,1.25fr) 2fr 40px;align-items:center;gap:8px;margin-bottom:6px}
+.xp-row{display:grid;grid-template-columns:minmax(0,1.7fr) 1.6fr 40px;align-items:center;gap:8px;margin-bottom:6px}
 .xp-name{font-weight:700;font-size:var(--xp-p-size,13px);text-transform:uppercase;letter-spacing:.04em;
   color:var(--xp-off);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .xp-name small{font-weight:400;text-transform:none;letter-spacing:0;color:var(--xp-mut)}
@@ -140,7 +140,7 @@ const NL_EXPLICACAO = (() => {
     ordenadas.forEach(e => {
       const linha = el('div', 'xp-row' + (e.key === r.emotions[0].key ? ' top' : ''));
       const nome = el('div', 'xp-name', e.name);
-      if (e.key === 'neutral') nome.appendChild(el('small', null, ' (neutro)'));
+      nome.appendChild(el('small', null, ` (${NL_DADOS.MODELO[e.key] || e.key})`)); // nome no modelo
       const trilho = el('div', 'xp-track');
       const fill = el('div', 'xp-fill');
       fill.style.width = Math.max(0, Math.min(100, e.pct)) + '%';
@@ -152,6 +152,7 @@ const NL_EXPLICACAO = (() => {
     const destaque = barras.querySelector('.xp-row.top .xp-name');
     if (destaque) destaque.appendChild(el('span', 'xp-tag', 'DESTAQUE'));
     const secBarras = secao(r.emotions.length >= 7 ? 'As 7 expressões que o modelo estimou' : 'As expressões guardadas neste link', barras);
+    secBarras.appendChild(el('p', 'xp-note', 'Entre parênteses, o nome que o modelo usa (traduzido do inglês). O site mostra nomes mais leves.'));
     if (r.emotions.length < 7) {
       secBarras.appendChild(el('p', 'xp-note', 'Este link é de uma versão anterior do site e guarda só as 3 expressões principais.'));
     }
