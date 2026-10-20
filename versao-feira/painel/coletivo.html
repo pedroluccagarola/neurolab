@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEURO LAB — Painel Coletivo</title>
+<link href="/lib/fonts/fonts.css" rel="stylesheet"><!-- fontes locais: funciona offline -->
+<!--
+  Painel coletivo — feito para rodar em tela grande (TV/projetor) na Expotec.
+  Faz polling em GET /api/sessoes a cada 10 s.
+  Teste com outro dia: /painel/coletivo.html?data=2026-10-03
+-->
+<style>
+:root{
+  --bg:#080D1A;  --bg2:#0D1B35;  --bg3:#111F3A;
+  --cyan:#00E5FF;      --cyan-dim:#0097A7;  --cyan-glow:rgba(0,229,255,.65);
+  --violet:#7C3AED;    --violet-dim:#4C1D95;
+  --green:#00FF88;     --green-dim:#00695C;
+  --amber:#FFB800;
+  --white:#FFFFFF;     --offwhite:#CBD5E1;  --muted:#64748B;
+  --line:rgba(0,229,255,.14);
+  --font-hud:'Share Tech Mono',monospace;
+  --font-ui:'Rajdhani',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%}
+body{
+  background:
+    radial-gradient(ellipse at 15% 0%, rgba(124,58,237,.16), transparent 55%),
+    radial-gradient(ellipse at 90% 100%, rgba(0,229,255,.10), transparent 55%),
+    var(--bg);
+  color:var(--offwhite);
+  font-family:var(--font-ui);
+  padding:clamp(16px,3vw,48px);
+  display:flex;flex-direction:column;gap:clamp(16px,2.4vw,32px);
+}
+/* grade de fundo sutil */
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size:48px 48px;
+  mask-image:radial-gradient(ellipse at center, #000 20%, transparent 75%);
+  opacity:.35;
+}
+
+/* ═══ HEADER ═══════════════════════════════════════════════════ */
+header{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  border-bottom:1px solid var(--line);padding-bottom:clamp(12px,1.6vw,20px);
+}
+.brand{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.brand h1{
+  font-family:var(--font-hud);font-weight:400;letter-spacing:.22em;
+  font-size:clamp(20px,2.4vw,34px);color:var(--cyan);
+  text-shadow:0 0 18px var(--cyan-glow);
+}
+.brand span{
+  font-family:var(--font-hud);letter-spacing:.3em;text-transform:uppercase;
+  font-size:clamp(11px,1vw,14px);color:var(--muted);
+}
+.status{
+  display:flex;align-items:center;gap:18px;
+  font-family:var(--font-hud);font-size:clamp(11px,1vw,14px);letter-spacing:.14em;color:var(--muted);
+}
+.live{display:flex;align-items:center;gap:8px;color:var(--green)}
+.live .dot{
+  width:9px;height:9px;border-radius:50%;background:var(--green);
+  box-shadow:0 0 10px var(--green);animation:pulse 1.6s ease-in-out infinite;
+}
+.live.off{color:var(--amber)}
+.live.off .dot{background:var(--amber);box-shadow:0 0 10px var(--amber);animation:none}
+#relogio{color:var(--offwhite);font-size:clamp(14px,1.4vw,20px)}
+@keyframes pulse{50%{opacity:.25}}
+
+/* ═══ GRID ═════════════════════════════════════════════════════ */
+main{
+  display:grid;gap:clamp(16px,2vw,28px);flex:1;
+  grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);
+  grid-template-rows:auto 1fr;
+  grid-template-areas:"total dist" "dom dist";
+}
+@media (max-width:860px){
+  main{grid-template-columns:minmax(0,1fr);grid-template-areas:"total" "dom" "dist"}
+}
+.card{
+  position:relative;
+  background:linear-gradient(160deg, rgba(13,27,53,.92), rgba(8,13,26,.92));
+  border:1px solid var(--line);border-radius:6px;
+  padding:clamp(18px,2.2vw,32px);
+  overflow:hidden;
+}
+/* cantoneiras HUD */
+.card::before,.card::after{
+  content:"";position:absolute;width:14px;height:14px;border-color:var(--cyan);border-style:solid;opacity:.7;
+}
+.card::before{top:-1px;left:-1px;border-width:2px 0 0 2px}
+.card::after{bottom:-1px;right:-1px;border-width:0 2px 2px 0}
+.label{
+  font-family:var(--font-hud);text-transform:uppercase;letter-spacing:.24em;
+  font-size:clamp(11px,.95vw,13px);color:var(--muted);margin-bottom:clamp(10px,1.2vw,16px);
+}
+
+/* ═══ TOTAL ════════════════════════════════════════════════════ */
+#card-total{grid-area:total}
+.total-num{
+  font-family:var(--font-hud);line-height:1;color:var(--white);
+  font-size:clamp(64px,9vw,148px);
+  text-shadow:0 0 28px rgba(0,229,255,.45);
+  font-variant-numeric:tabular-nums;
+}
+.total-num.bump{animation:bump .6s ease-out}
+@keyframes bump{0%{color:var(--green);text-shadow:0 0 40px var(--green)}100%{}}
+.sub{margin-top:10px;font-size:clamp(14px,1.3vw,18px);color:var(--muted);font-weight:500}
+.sub b{color:var(--offwhite);font-weight:600}
+
+/* ═══ DOMINANTE ════════════════════════════════════════════════ */
+#card-dom{grid-area:dom;display:flex;flex-direction:column}
+#card-dom::before,#card-dom::after{border-color:var(--green)}
+.dom-nome{
+  font-weight:700;text-transform:uppercase;letter-spacing:.04em;line-height:1;
+  font-size:clamp(44px,6vw,96px);color:var(--green);
+  text-shadow:0 0 26px rgba(0,255,136,.45);
+  overflow-wrap:anywhere;
+}
+.dom-nome.vazio{color:var(--muted);text-shadow:none;font-size:clamp(28px,3vw,44px)}
+.dom-meta{margin-top:14px;font-family:var(--font-hud);font-size:clamp(14px,1.3vw,18px);color:var(--offwhite);letter-spacing:.08em}
+.dom-meta .pct{color:var(--green)}
+.ring{margin-top:auto;padding-top:20px}
+.ring-track{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden}
+.ring-fill{height:100%;width:0;background:var(--green);box-shadow:0 0 12px var(--green);transition:width .9s cubic-bezier(.2,.8,.2,1)}
+
+/* ═══ DISTRIBUIÇÃO ═════════════════════════════════════════════ */
+#card-dist{grid-area:dist;display:flex;flex-direction:column}
+.bars{display:flex;flex-direction:column;gap:clamp(12px,1.6vw,22px);flex:1;justify-content:center}
+.bar{
+  display:grid;align-items:center;gap:14px;
+  grid-template-columns:clamp(96px,11vw,160px) minmax(0,1fr) clamp(76px,7vw,110px);
+}
+.bar-nome{font-weight:600;font-size:clamp(16px,1.6vw,24px);color:var(--offwhite);letter-spacing:.02em}
+.bar-track{height:clamp(12px,1.4vw,20px);background:var(--bg3);border-radius:3px;overflow:hidden}
+.bar-fill{
+  height:100%;width:0;border-radius:3px;
+  background:linear-gradient(90deg,var(--cyan-dim),var(--cyan));
+  box-shadow:0 0 10px rgba(0,229,255,.35);
+  transition:width .9s cubic-bezier(.2,.8,.2,1);
+}
+.bar-val{text-align:right;font-family:var(--font-hud);font-size:clamp(14px,1.3vw,19px);color:var(--offwhite);font-variant-numeric:tabular-nums}
+.bar-val small{color:var(--muted);font-size:.8em;margin-left:6px}
+.bar.top .bar-nome{color:var(--green)}
+.bar.top .bar-fill{background:linear-gradient(90deg,var(--green-dim),var(--green));box-shadow:0 0 14px rgba(0,255,136,.45)}
+.bar.zero .bar-nome,.bar.zero .bar-val{color:var(--muted)}
+
+footer{
+  font-family:var(--font-hud);font-size:12px;letter-spacing:.14em;color:var(--muted);
+  display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
+}
+#erro{color:var(--amber)}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>NEURO LAB</h1>
+    <span>Painel coletivo · Expotec</span>
+  </div>
+  <div class="status">
+    <div class="live" id="live"><span class="dot"></span><span id="live-txt">CONECTANDO</span></div>
+    <div id="relogio">--:--:--</div>
+  </div>
+</header>
+
+<main>
+  <section class="card" id="card-total">
+    <div class="label">Visitantes escaneados <span id="lbl-dia">hoje</span></div>
+    <div class="total-num" id="total">0</div>
+    <div class="sub" id="ultimo">Aguardando o primeiro scan…</div>
+  </section>
+
+  <section class="card" id="card-dom">
+    <div class="label">Emoção dominante do dia</div>
+    <div class="dom-nome vazio" id="dom-nome">Sem dados</div>
+    <div class="dom-meta" id="dom-meta">&nbsp;</div>
+    <div class="ring"><div class="ring-track"><div class="ring-fill" id="dom-bar"></div></div></div>
+  </section>
+
+  <section class="card" id="card-dist">
+    <div class="label">Distribuição das emoções</div>
+    <div class="bars" id="bars"></div>
+  </section>
+</main>
+
+<footer>
+  <span id="atualizado">—</span>
+  <span id="erro"></span>
+  <span>Atualização automática a cada 10 s</span>
+</footer>
+
+<script>
+'use strict';
+
+const POLL_MS = 10000;
+const params  = new URLSearchParams(location.search);
+const API_URL = '/api/sessoes' + (params.get('data') ? '?data=' + encodeURIComponent(params.get('data')) : '');
+
+const $ = id => document.getElementById(id);
+let totalAnterior = null;
+let emAndamento   = false;
+
+/* ── Relógio ─────────────────────────────────────────────────── */
+function tick() {
+  $('relogio').textContent = new Date().toLocaleTimeString('pt-BR');
+}
+tick();
+setInterval(tick, 1000);
+
+/* ── Polling ─────────────────────────────────────────────────── */
+async function atualizar() {
+  if (emAndamento) return;           // evita requisições sobrepostas
+  emAndamento = true;
+  try {
+    const res = await fetch(API_URL, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const dados = await res.json();
+    if (!dados.ok) throw new Error(dados.erro || 'resposta inválida');
+    render(dados);
+    setStatus(true);
+  } catch (err) {
+    console.warn('[painel] falha ao atualizar:', err.message);
+    setStatus(false, err.message);   // mantém os últimos dados na tela
+  } finally {
+    emAndamento = false;
+  }
+}
+
+function setStatus(online, msg) {
+  $('live').classList.toggle('off', !online);
+  $('live-txt').textContent = online ? 'AO VIVO' : 'OFFLINE';
+  // "HTTP 500" = servidor no ar mas com problema nos dados; o resto = sem rede
+  $('erro').textContent = online ? ''
+    : /^HTTP 5/.test(msg || '') ? 'Servidor com erro ao ler os dados — tentando novamente…'
+    : 'Sem conexão com o servidor — tentando novamente…';
+}
+
+/* ── Renderização ────────────────────────────────────────────── */
+function render(d) {
+  const ehHoje = !params.get('data');
+  $('lbl-dia').textContent = ehHoje ? 'hoje' : 'em ' + formatarDia(d.data);
+
+  // Total
+  const totalEl = $('total');
+  totalEl.textContent = d.total_hoje;
+  if (totalAnterior !== null && d.total_hoje > totalAnterior) {
+    totalEl.classList.remove('bump'); void totalEl.offsetWidth; totalEl.classList.add('bump');
+  }
+  totalAnterior = d.total_hoje;
+
+  $('ultimo').innerHTML = d.ultimo_scan
+    ? 'Último scan às <b>' + new Date(d.ultimo_scan).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '</b>'
+      + ' · <b>' + d.total_geral + '</b> no total do evento'
+    : 'Aguardando o primeiro scan…';
+
+  // Dominante
+  const dom = d.dominante;
+  const nomeEl = $('dom-nome');
+  if (dom) {
+    nomeEl.textContent = dom.label;
+    nomeEl.classList.remove('vazio');
+    $('dom-meta').innerHTML = '<span class="pct">' + dom.pct + '%</span> dos visitantes · '
+      + dom.count + (dom.count === 1 ? ' pessoa' : ' pessoas');
+    $('dom-bar').style.width = dom.pct + '%';
+  } else {
+    nomeEl.textContent = 'Sem dados';
+    nomeEl.classList.add('vazio');
+    $('dom-meta').innerHTML = '&nbsp;';
+    $('dom-bar').style.width = '0';
+  }
+
+  // Distribuição — reaproveita as linhas pela key para a transição de largura funcionar
+  const cont = $('bars');
+  const topKey = dom ? dom.key : null;
+  d.distribuicao.forEach((e, i) => {
+    let row = cont.querySelector('[data-key="' + e.key + '"]');
+    if (!row) {
+      row = document.createElement('div');
+      row.className = 'bar';
+      row.dataset.key = e.key;
+      row.innerHTML = '<span class="bar-nome"></span>'
+        + '<div class="bar-track"><div class="bar-fill"></div></div>'
+        + '<span class="bar-val"></span>';
+      row.querySelector('.bar-nome').textContent = e.label;
+    }
+    if (cont.children[i] !== row) cont.insertBefore(row, cont.children[i] || null);
+    row.classList.toggle('top',  e.key === topKey);
+    row.classList.toggle('zero', e.count === 0);
+    row.querySelector('.bar-fill').style.width = e.pct + '%';
+    row.querySelector('.bar-val').innerHTML = e.pct + '%<small>' + e.count + '</small>';
+  });
+
+  $('atualizado').textContent = 'Atualizado às ' + new Date(d.atualizado_em).toLocaleTimeString('pt-BR');
+}
+
+function formatarDia(iso) {
+  const [a, m, dd] = iso.split('-');
+  return dd + '/' + m + '/' + a;
+}
+
+atualizar();
+setInterval(atualizar, POLL_MS);
+</script>
+</body>
+</html>

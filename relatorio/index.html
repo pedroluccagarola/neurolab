@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#080D1A">
+<meta name="robots" content="noindex">
+<title>NEURO LAB — Seu Relatório</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='8' fill='%23080D1A'/%3E%3Ccircle cx='20' cy='20' r='11' fill='none' stroke='%2300E5FF' stroke-width='2.5'/%3E%3Ccircle cx='20' cy='20' r='4.5' fill='%2300E5FF'/%3E%3C/svg%3E">
+<!--
+  NEURO LAB — relatório da versão demo (GitHub Pages, sem servidor).
+  Na feira, o servidor preenchia os {{CAMPOS}} deste modelo
+  (versao-feira/relatorio/template.html). Aqui o próprio navegador lê o
+  resultado da URL (?e=happy:72,neutral:20&m=0&t=...) e usa o conteúdo
+  offline de js/conteudo.js. Nenhuma chamada de rede além dos arquivos.
+-->
+<script src="../js/conteudo.js"></script>
+<style>
+/* ═══ RESET ════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ═══ TOKENS ═══════════════════════════════════════════════════ */
+:root {
+  --bg:         #080D1A;
+  --bg2:        #0D1B35;
+  --bg3:        #111F3A;
+  --cyan:       #00E5FF;
+  --cyan-dim:   #0097A7;
+  --violet:     #7C3AED;
+  --green:      #00FF88;
+  --green-dim:  #00695C;
+  --amber:      #FFB800;
+  --white:      #FFFFFF;
+  --offwhite:   #CBD5E1;
+  --muted:      #64748B;
+  --font-mono:  'Courier New', Courier, monospace;
+  --font-sans:  -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* ═══ BASE ══════════════════════════════════════════════════════ */
+html {
+  background: var(--bg);
+  min-height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--white);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+  min-height: 100vh;
+  padding: 0 0 48px;
+  /* prevent horizontal scroll on mobile */
+  overflow-x: hidden;
+}
+
+/* ═══ TOP BAR ═══════════════════════════════════════════════════ */
+.top-bar {
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, var(--cyan), var(--violet), var(--green));
+}
+
+/* ═══ HEADER ════════════════════════════════════════════════════ */
+.header {
+  padding: 24px 20px 20px;
+  border-bottom: 0.5px solid rgba(0, 229, 255, 0.15);
+}
+
+.header-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.logo-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 10px var(--cyan);
+  animation: pulse-dot 2.4s ease-in-out infinite;
+}
+
+.logo-name {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.3em;
+  color: var(--cyan);
+  text-transform: uppercase;
+}
+
+.header-sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  color: var(--muted);
+  text-transform: uppercase;
+  padding-left: 18px;
+}
+
+/* ═══ MAIN WRAPPER ══════════════════════════════════════════════ */
+.main {
+  padding: 0 20px;
+}
+
+/* ═══ SESSION META ══════════════════════════════════════════════ */
+.session-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 0 18px;
+  border-bottom: 0.5px solid rgba(0, 229, 255, 0.1);
+  margin-bottom: 12px;
+}
+
+/* Aviso discreto: na demo o resultado existe só no link */
+.link-note {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-bottom: 24px;
+}
+
+.session-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.session-meta-item:last-child {
+  text-align: right;
+}
+
+.meta-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.meta-value {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--offwhite);
+  letter-spacing: 0.06em;
+}
+
+/* ═══ SECTION HEADER ════════════════════════════════════════════ */
+.section-hdr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.section-hdr-line {
+  flex: 1;
+  height: 0.5px;
+  background: rgba(0, 229, 255, 0.18);
+}
+
+.section-hdr-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: var(--cyan);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* ═══ DOMINANT EMOTION CARD ═════════════════════════════════════ */
+.dominant-card {
+  background: var(--bg2);
+  border: 0.5px solid rgba(0, 229, 255, 0.3);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* top accent bar */
+.dominant-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--cyan), var(--violet));
+}
+
+.dominant-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.dominant-name {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--cyan);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1;
+  margin-bottom: 12px;
+  text-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
+}
+
+.dominant-pct-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dominant-pct {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: bold;
+  color: var(--cyan);
+  min-width: 52px;
+}
+
+.dominant-bar-track {
+  flex: 1;
+  height: 6px;
+  background: rgba(0, 229, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.dominant-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--cyan-dim), var(--cyan));
+  box-shadow: 0 0 8px var(--cyan);
+  /* width set by script */
+}
+
+/* ═══ EMOTION ROWS (secondary) ══════════════════════════════════ */
+.emotions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.emotion-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg2);
+  border: 0.5px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+}
+
+.emotion-row-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--offwhite);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  min-width: 30%;
+}
+
+.emotion-row-track {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.emotion-row-fill {
+  height: 100%;
+  border-radius: 2px;
+  /* color and width set by script */
+}
+
+.emotion-row-pct {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--offwhite);
+  min-width: 38px;
+  text-align: right;
+}
+
+/* ═══ AI COMMENT BLOCK ══════════════════════════════════════════ */
+.ai-block {
+  background: var(--bg2);
+  border: 0.5px solid rgba(124, 58, 237, 0.35);
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 28px;
+  position: relative;
+}
+
+.ai-block-label {
+  position: absolute;
+  top: -9px; left: 14px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--violet);
+  background: var(--bg);
+  padding: 0 6px;
+  text-transform: uppercase;
+}
+
+.ai-block-text {
+  font-size: 14px;
+  color: var(--offwhite);
+  line-height: 1.7;
+  font-style: italic;
+}
+
+/* ═══ DICAS ══════════════════════════════════════════════════════ */
+.dicas-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.dica-card {
+  display: flex;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--bg2);
+  border: 0.5px solid rgba(0, 255, 136, 0.18);
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* left accent */
+.dica-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--green);
+}
+
+.dica-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--green);
+  font-weight: bold;
+  min-width: 20px;
+  padding-top: 1px;
+}
+
+.dica-text {
+  font-size: 14px;
+  color: var(--offwhite);
+  line-height: 1.6;
+  flex: 1;
+}
+
+/* ═══ SCIENCE NOTE ══════════════════════════════════════════════ */
+.science-note {
+  background: var(--bg3);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 28px;
+}
+
+.science-note-title {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--amber);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.science-note-text {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+/* ═══ DISCLAIMER ════════════════════════════════════════════════ */
+.disclaimer {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 0.5px solid rgba(255, 184, 0, 0.2);
+  border-radius: 8px;
+  margin-bottom: 28px;
+}
+
+.disclaimer-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid var(--amber);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: var(--amber);
+  font-family: var(--font-mono);
+  font-weight: bold;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.disclaimer-text {
+  font-size: 11px;
+  color: rgba(255, 184, 0, 0.6);
+  line-height: 1.55;
+}
+
+/* ═══ VISÃO DE FUTURO ═══════════════════════════════════════════ */
+/* Discreta de propósito: sem fundo, só um fio violeta à esquerda,
+   texto menor e esmaecido — não compete com o resultado emocional. */
+.future-note {
+  padding: 2px 0 2px 14px;
+  border-left: 1px solid rgba(124, 58, 237, 0.45);
+  margin-bottom: 28px;
+}
+
+.future-note-title {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: rgba(124, 58, 237, 0.85);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.future-note-text {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.future-note-text + .future-note-text {
+  margin-top: 8px;
+}
+
+.future-note-text strong {
+  color: var(--offwhite);
+  font-weight: 500;
+}
+
+/* ═══ FOOTER ════════════════════════════════════════════════════ */
+.footer {
+  padding: 20px 20px 0;
+  border-top: 0.5px solid rgba(0, 229, 255, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.footer-line {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.footer-line span {
+  color: var(--cyan);
+}
+
+/* ═══ ANIMATIONS ════════════════════════════════════════════════ */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(1.2); }
+}
+
+/* ═══ MOBILE FINE-TUNE ══════════════════════════════════════════ */
+@media (max-width: 380px) {
+  .dominant-name  { font-size: 26px; }
+  .dominant-pct   { font-size: 18px; }
+  body            { font-size: 14px; }
+}
+
+/* ═══ AÇÕES (demo) ═════════════════════════════════════════════ */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.action-btn {
+  flex: 1 1 140px;
+  padding: 12px 14px;
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  border-radius: 8px;
+  background: rgba(0, 229, 255, 0.08);
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-align: center;
+  text-decoration: none;
+}
+
+.action-btn.alt {
+  border-color: rgba(0, 255, 136, 0.35);
+  background: rgba(0, 255, 136, 0.06);
+  color: var(--green);
+}
+
+/* sem resultado na URL */
+.empty-card {
+  background: var(--bg2);
+  border: 0.5px solid rgba(0, 229, 255, 0.3);
+  border-radius: 12px;
+  padding: 24px 20px;
+  margin: 8px 0 28px;
+  text-align: center;
+}
+
+.empty-card p {
+  font-size: 14px;
+  color: var(--offwhite);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.empty-card .action-btn { display: inline-block; }
+
+[hidden] { display: none !important; }
+
+/* largura confortável no computador (no celular ocupa a tela toda) */
+.top-bar ~ * { max-width: 640px; margin-left: auto; margin-right: auto; }
+</style>
+</head>
+<body>
+
+<div class="top-bar"></div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-logo">
+    <div class="logo-dot"></div>
+    <span class="logo-name">NEURO LAB</span>
+  </div>
+  <div class="header-sub">Relatório de Saúde Digital · Expotec 2026</div>
+</header>
+
+<main class="main">
+
+  <!-- META DA SESSÃO -->
+  <div class="session-meta">
+    <div class="session-meta-item">
+      <span class="meta-label">Sessão</span>
+      <span class="meta-value">DEMO</span>
+    </div>
+    <div class="session-meta-item">
+      <span class="meta-label">Data / hora</span>
+      <span class="meta-value" id="metaData">—</span>
+    </div>
+  </div>
+
+  <p class="link-note">Versão de demonstração: o resultado fica só neste link e nada foi enviado a um servidor. Salve o link ou tire um print para guardar.</p>
+
+  <!-- SEM RESULTADO NA URL -->
+  <div class="empty-card" id="semResultado" hidden>
+    <p>Nenhum resultado neste link. Faça o scan (ou escolha uma emoção) na página inicial para gerar o seu relatório.</p>
+    <a class="action-btn" href="../">◂ Ir para o início</a>
+  </div>
+
+  <div id="comResultado">
+
+  <!-- EMOÇÃO DOMINANTE -->
+  <div class="section-hdr">
+    <span class="section-hdr-label" id="tituloEstado">◈ Estado emocional detectado</span>
+    <div class="section-hdr-line"></div>
+  </div>
+
+  <div class="dominant-card">
+    <div class="dominant-label" id="dominantLabel">Emoção principal</div>
+    <div class="dominant-name" id="dominantName">—</div>
+    <div class="dominant-pct-row">
+      <span class="dominant-pct" id="dominantPct">—</span>
+      <div class="dominant-bar-track">
+        <div class="dominant-bar-fill" id="dominantBar" style="width: 0%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EMOÇÕES SECUNDÁRIAS -->
+  <div class="emotions-list" id="emotionsList"></div>
+
+  <!-- COMENTÁRIO -->
+  <div class="section-hdr">
+    <span class="section-hdr-label">◈ Análise do seu resultado</span>
+    <div class="section-hdr-line"></div>
+  </div>
+
+  <div class="ai-block">
+    <div class="ai-block-label">NEURO LAB ›</div>
+    <p class="ai-block-text" id="abertura"></p>
+  </div>
+
+  <!-- DICAS PERSONALIZADAS -->
+  <div class="section-hdr">
+    <span class="section-hdr-label">◈ Dicas personalizadas para você</span>
+    <div class="section-hdr-line"></div>
+  </div>
+
+  <div class="dicas-list" id="dicasList"></div>
+
+  <!-- PRÓXIMOS PASSOS (demo) -->
+  <div class="actions">
+    <a class="action-btn alt" id="btnVR" href="../vr/lab.html">◎ Laboratório VR</a>
+    <a class="action-btn" href="../">↺ Novo scan</a>
+  </div>
+
+  </div><!-- /comResultado -->
+
+  <!-- NOTA CIENTÍFICA -->
+  <div class="science-note">
+    <div class="science-note-title">⊕ Como funciona o NEURO LAB</div>
+    <p class="science-note-text">
+      O scan emocional usa visão computacional baseada nas pesquisas de Paul Ekman
+      sobre as 7 expressões faciais universais reconhecidas em todas as culturas.
+      A câmera analisa a expressão do rosto e estima o quanto cada emoção está
+      presente naquele momento. A experiência VR usa uma técnica de respiração guiada
+      — inspirar, segurar e soltar em ritmo controlado — que ajuda o corpo a relaxar
+      de forma natural e comprovada.
+    </p>
+  </div>
+
+  <!-- DISCLAIMER -->
+  <div class="disclaimer">
+    <div class="disclaimer-icon">i</div>
+    <p class="disclaimer-text">
+      Esta é uma experiência educativa de bem-estar tecnológico.
+      Os resultados são gerados por algoritmos de visão computacional e não
+      constituem avaliação médica ou psicológica. Em caso de necessidade,
+      consulte um profissional de saúde qualificado.
+    </p>
+  </div>
+
+  <!-- VISÃO DE FUTURO -->
+  <div class="future-note">
+    <div class="future-note-title">◇ O que vem por aí</div>
+    <p class="future-note-text">
+      Esta análise é uma demonstração educativa de bem-estar.
+    </p>
+    <p class="future-note-text">
+      No futuro, tecnologias como esta poderão identificar sinais de alerta
+      para a saúde antes mesmo dos primeiros sintomas aparecerem — pela
+      expressão facial, cor da pele, padrão de voz ou movimento dos olhos.
+    </p>
+    <p class="future-note-text">
+      <strong>O NEURO LAB é um exemplo do que está por vir.</strong>
+    </p>
+  </div>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-col">
+    <div class="footer-line">NEURO LAB · Expotec <span>2026</span></div>
+    <div class="footer-line">Saúde · Bem-Estar · Tecnologia</div>
+  </div>
+  <div class="footer-col" style="align-items: flex-end">
+    <div class="footer-line">conteúdo: <span>offline</span></div>
+    <div class="footer-line">versão <span>demo</span></div>
+  </div>
+</footer>
+
+<script>
+/* Preenche o relatório com o resultado da URL. Tudo via textContent:
+   nada que venha do link é interpretado como HTML. */
+(() => {
+  const r = NL_DADOS.decodificar(location.search);
+  if (!r) {
+    document.getElementById('comResultado').hidden = true;
+    document.getElementById('semResultado').hidden = false;
+    return;
+  }
+
+  const dom = r.emotions[0];
+  const conteudo = NL_DADOS.RELATORIO[r.dominant] || NL_DADOS.RELATORIO.neutral;
+
+  if (r.timestamp) {
+    const d = r.timestamp;
+    document.getElementById('metaData').textContent =
+      d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' · ' +
+      d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  document.getElementById('dominantName').textContent = dom.name;
+  if (r.manual) {
+    // Pular scan: não houve leitura do rosto, então não há porcentagem
+    document.getElementById('tituloEstado').textContent  = '◈ Emoção escolhida (sem scan)';
+    document.getElementById('dominantLabel').textContent = 'Escolhida para a demonstração';
+    document.getElementById('dominantPct').textContent   = '✓';
+    document.getElementById('dominantBar').style.width   = '100%';
+    document.getElementById('abertura').textContent = NL_DADOS.COMENTARIOS_MANUAL[r.dominant];
+  } else {
+    document.getElementById('dominantPct').textContent = dom.pct + '%';
+    document.getElementById('dominantBar').style.width = dom.pct + '%';
+    document.getElementById('abertura').textContent = conteudo.abertura;
+  }
+
+  // Emoções secundárias — alterna violeta e verde, como na feira
+  const cores = ['#7C3AED', '#00FF88'];
+  const lista = document.getElementById('emotionsList');
+  r.emotions.slice(1).forEach((e, i) => {
+    const cor = cores[i % cores.length];
+    const row = document.createElement('div');
+    row.className = 'emotion-row';
+    row.innerHTML = '<span class="emotion-row-name"></span>'
+      + '<div class="emotion-row-track"><div class="emotion-row-fill"></div></div>'
+      + '<span class="emotion-row-pct"></span>';
+    row.querySelector('.emotion-row-name').textContent = e.name;
+    row.querySelector('.emotion-row-pct').textContent  = e.pct + '%';
+    const fill = row.querySelector('.emotion-row-fill');
+    fill.style.width      = e.pct + '%';
+    fill.style.background = cor;
+    fill.style.boxShadow  = '0 0 6px ' + cor;
+    lista.appendChild(row);
+  });
+  if (!lista.children.length) lista.style.marginBottom = '28px';
+
+  const dicas = document.getElementById('dicasList');
+  conteudo.dicas.forEach((dica, i) => {
+    const card = document.createElement('div');
+    card.className = 'dica-card';
+    card.innerHTML = '<span class="dica-num"></span><p class="dica-text"></p>';
+    card.querySelector('.dica-num').textContent  = '0' + (i + 1);
+    card.querySelector('.dica-text').textContent = dica;
+    dicas.appendChild(card);
+  });
+
+  document.getElementById('btnVR').href = '../vr/lab.html' + location.search;
+})();
+</script>
+
+</body>
+</html>

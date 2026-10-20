@@ -1,0 +1,1758 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEURO LAB — Laboratório de Saúde Digital</title>
+<!-- Tudo local (lib/): o scan funciona mesmo se a internet da feira cair -->
+<link href="/lib/fonts/fonts.css" rel="stylesheet">
+<script src="/lib/face-api.min.js"></script><!-- face-api.js 0.22.2 -->
+<script src="/lib/qrcode.min.js"></script><!-- qrcodejs 1.0.0 -->
+<style>
+/* ── RESET ───────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#080D1A;  --bg2:#0D1B35;  --bg3:#111F3A;
+  --cyan:#00E5FF;      --cyan-dim:#0097A7;  --cyan-glow:rgba(0,229,255,.65);
+  --violet:#7C3AED;    --violet-dim:#4C1D95;
+  --green:#00FF88;     --green-dim:#00695C;
+  --amber:#FFB800;
+  --white:#FFFFFF;     --offwhite:#CBD5E1;  --muted:#64748B;
+  --font-hud:'Share Tech Mono',monospace;
+  --font-ui:'Rajdhani',sans-serif;
+  --phase-color:var(--cyan);
+}
+
+html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
+  font-family:var(--font-ui);overflow:hidden;user-select:none}
+
+/* ── ROOT + FRAME ─────────────────────────────────────────────── */
+.hud-root{width:100vw;height:100vh;display:flex;
+  align-items:center;justify-content:center;background:var(--bg)}
+.hud-frame{position:relative;
+  width:min(56.25vh,100vw);height:min(100vh,177.78vw);
+  background:var(--bg);overflow:hidden}
+@media(max-width:480px){.hud-frame{width:100vw;height:100vh}}
+
+/* ── BACKGROUND LAYERS ────────────────────────────────────────── */
+#particles{position:absolute;inset:0;width:100%;height:100%;z-index:0}
+.grid-overlay{position:absolute;inset:0;z-index:1;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(0,229,255,.04) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,229,255,.04) 1px,transparent 1px);
+  background-size:40px 40px;
+  transition:opacity .6s}
+/* grid brightens during scan */
+.hud-frame.scanning .grid-overlay{opacity:2}
+
+/* Ambient glow — radiates from centre during scan */
+.ambient-glow{position:absolute;inset:0;z-index:2;pointer-events:none;
+  background:radial-gradient(ellipse 60% 50% at 50% 48%,
+    rgba(0,229,255,.0) 0%,transparent 100%);
+  transition:background .8s ease}
+.hud-frame.scanning .ambient-glow{
+  background:radial-gradient(ellipse 60% 50% at 50% 48%,
+    rgba(0,229,255,.07) 0%,transparent 100%)}
+.hud-frame.result-mode .ambient-glow{
+  background:radial-gradient(ellipse 80% 60% at 50% 80%,
+    rgba(0,229,255,.06) 0%,transparent 100%)}
+
+/* ── OUTER CORNER BRACKETS ────────────────────────────────────── */
+.corner{position:absolute;width:32px;height:32px;z-index:10;
+  pointer-events:none;transition:opacity .4s}
+.corner::before,.corner::after{content:'';position:absolute;background:var(--cyan)}
+.corner::before{width:100%;height:2px;top:0;left:0}
+.corner::after{width:2px;height:100%;top:0;left:0}
+.corner.tl{top:12px;left:12px}
+.corner.tr{top:12px;right:12px;transform:scaleX(-1)}
+.corner.bl{bottom:12px;left:12px;transform:scaleY(-1)}
+.corner.br{bottom:12px;right:12px;transform:scale(-1)}
+/* corners brighten during scan */
+.hud-frame.scanning .corner::before,
+.hud-frame.scanning .corner::after{
+  box-shadow:0 0 8px var(--cyan)}
+
+/* ── HEADER ───────────────────────────────────────────────────── */
+.hud-header{position:absolute;top:0;left:0;right:0;z-index:10;
+  padding:16px 24px 0;display:flex;flex-direction:column;
+  align-items:center;gap:2px;transition:opacity .5s}
+.logo-row{display:flex;align-items:center;gap:10px}
+.logo-icon{width:18px;height:18px;position:relative;flex-shrink:0}
+.logo-icon::before{content:'';position:absolute;inset:0;
+  border:1.5px solid var(--cyan);border-radius:50%;
+  animation:pulse-ring 2.4s ease-in-out infinite}
+.logo-icon::after{content:'';position:absolute;inset:5px;
+  background:var(--cyan);border-radius:50%;
+  animation:pulse-dot 2.4s ease-in-out infinite}
+.logo-text{font-family:var(--font-hud);font-size:13px;letter-spacing:.35em;
+  color:var(--cyan);text-shadow:0 0 16px var(--cyan-glow)}
+.header-sub{font-family:var(--font-hud);font-size:8px;
+  letter-spacing:.2em;color:var(--muted);text-transform:uppercase}
+
+/* ── STATUS BAR ───────────────────────────────────────────────── */
+.status-bar{position:absolute;top:62px;left:20px;right:20px;z-index:10;
+  display:flex;justify-content:space-between;align-items:center;
+  padding:5px 10px;border:.5px solid rgba(0,229,255,.2);
+  background:rgba(0,229,255,.04);transition:border-color .4s,background .4s}
+.status-bar.scanning{border-color:var(--phase-color);background:rgba(0,229,255,.09)}
+.status-item{display:flex;align-items:center;gap:5px}
+.status-dot{width:5px;height:5px;border-radius:50%;
+  background:var(--green);animation:blink 1.8s ease-in-out infinite}
+.status-label{font-family:var(--font-hud);font-size:8px;
+  letter-spacing:.12em;color:var(--offwhite);text-transform:uppercase}
+.status-value{font-family:var(--font-hud);font-size:8px;
+  letter-spacing:.08em;color:var(--cyan);transition:color .3s}
+
+/* ── DISCOVER STRIP ───────────────────────────────────────────── */
+.discover-strip{position:absolute;top:93px;left:14px;right:14px;
+  z-index:10;display:flex;gap:5px;
+  transition:opacity .5s,transform .5s}
+.discover-strip.hidden{opacity:0;transform:translateY(-6px);pointer-events:none}
+.discover-card{flex:1;border:.5px solid rgba(0,229,255,.18);
+  background:rgba(0,229,255,.04);padding:6px 8px;
+  display:flex;flex-direction:column;gap:3px;
+  position:relative;overflow:hidden}
+.discover-card::after{content:'';position:absolute;left:0;top:0;
+  width:2px;height:100%;background:var(--acc)}
+.discover-card.c{--acc:var(--cyan)}
+.discover-card.v{--acc:var(--violet)}
+.discover-card.g{--acc:var(--green)}
+.dc-label{font-family:var(--font-hud);font-size:7px;
+  letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+.dc-value{font-family:var(--font-ui);font-weight:700;
+  font-size:clamp(10px,2vw,13px);color:var(--acc);letter-spacing:.04em}
+.dc-sub{font-family:var(--font-hud);font-size:7px;color:var(--muted);letter-spacing:.1em}
+.dc-bar-track{width:100%;height:2px;background:rgba(255,255,255,.07);
+  border-radius:1px;margin-top:2px;overflow:hidden}
+.dc-bar-fill{height:100%;border-radius:1px;background:var(--acc);
+  width:30%;animation:idle-bar 3s ease-in-out infinite}
+.discover-card.v .dc-bar-fill{animation-delay:.8s}
+.discover-card.g .dc-bar-fill{animation-delay:1.6s}
+
+/* ── RAILS ────────────────────────────────────────────────────── */
+.rail{position:absolute;top:50%;transform:translateY(-50%);
+  z-index:10;display:flex;flex-direction:column;gap:14px;pointer-events:none;
+  transition:opacity .5s}
+.rail.left{left:8px} .rail.right{right:8px}
+.rail.hidden{opacity:0}
+.rail-item{display:flex;flex-direction:column;align-items:center;gap:3px}
+.rail-value{font-family:var(--font-hud);font-size:clamp(8px,1.6vw,10px);
+  color:var(--cyan);letter-spacing:.05em}
+.rail-label{font-family:var(--font-hud);font-size:clamp(6px,1.1vw,7px);
+  color:var(--muted);letter-spacing:.1em;text-transform:uppercase;
+  writing-mode:vertical-rl;transform:rotate(180deg)}
+.rail-tick{width:1px;height:8px;background:rgba(0,229,255,.18);margin:2px 0}
+.rail-spark{width:28px;height:16px;opacity:.7}
+
+/* ── WEBCAM ZONE ──────────────────────────────────────────────── */
+.webcam-zone{position:absolute;top:49%;left:50%;
+  transform:translate(-50%,-52%);width:68%;aspect-ratio:1/1;z-index:5;
+  transition:transform .6s cubic-bezier(.16,1,.3,1),width .6s cubic-bezier(.16,1,.3,1)}
+/* Zone shrinks + shifts up during result — preserve centering transform */
+.hud-frame.result-mode .webcam-zone{
+  width:52%;
+  top:26%;
+  transform:translate(-50%, 0);
+}
+
+.webcam-border{position:absolute;inset:-3px;
+  border:1px solid rgba(0,229,255,.35);
+  animation:border-pulse 3s ease-in-out infinite;
+  transition:border-color .3s,box-shadow .5s}
+.webcam-border.scanning{
+  border-color:var(--phase-color);
+  box-shadow:0 0 24px var(--phase-color),0 0 50px rgba(0,229,255,.2)}
+.webcam-border.done{
+  border-color:var(--green);
+  box-shadow:0 0 20px rgba(0,255,136,.5),0 0 40px rgba(0,255,136,.15)}
+
+.webcam-glow-ring{position:absolute;inset:-14px;
+  border:.5px solid rgba(0,229,255,.10);border-radius:2px;
+  animation:border-pulse 3s ease-in-out infinite reverse;pointer-events:none}
+.wcam-corner{position:absolute;width:20px;height:20px;pointer-events:none;
+  transition:transform .4s}
+.wcam-corner::before,.wcam-corner::after{content:'';position:absolute;
+  background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+.wcam-corner::before{width:100%;height:2px;top:0;left:0}
+.wcam-corner::after{width:2px;height:100%;top:0;left:0}
+.wcam-corner.tl{top:-1px;left:-1px}
+.wcam-corner.tr{top:-1px;right:-1px;transform:scaleX(-1)}
+.wcam-corner.bl{bottom:-1px;left:-1px;transform:scaleY(-1)}
+.wcam-corner.br{bottom:-1px;right:-1px;transform:scale(-1)}
+/* corners contract inward during scan = "locking on" */
+.hud-frame.scanning .wcam-corner.tl{transform:translate(4px,4px)}
+.hud-frame.scanning .wcam-corner.tr{transform:translate(-4px,4px) scaleX(-1)}
+.hud-frame.scanning .wcam-corner.bl{transform:translate(4px,-4px) scaleY(-1)}
+.hud-frame.scanning .wcam-corner.br{transform:translate(-4px,-4px) scale(-1)}
+
+.webcam-feed{position:absolute;inset:0;width:100%;height:100%;
+  object-fit:cover;background:#040810;display:block}
+
+/* ── RETICLE ──────────────────────────────────────────────────── */
+.reticle{position:absolute;inset:0;z-index:6;
+  display:flex;align-items:center;justify-content:center;pointer-events:none;
+  transition:opacity .4s}
+.reticle.hidden{opacity:0}
+.reticle-ring{width:50%;aspect-ratio:1;border-radius:50%;
+  border:1px dashed rgba(0,229,255,.3);animation:spin 14s linear infinite;
+  transition:border-color .3s,border-style .3s}
+.reticle-ring.fast{animation-duration:1.8s;
+  border-color:rgba(0,229,255,.8);border-style:solid}
+.reticle-ring2{position:absolute;width:66%;aspect-ratio:1;border-radius:50%;
+  border:.5px solid rgba(124,58,237,.25);
+  animation:spin 20s linear infinite reverse}
+.reticle-ring2.fast{animation-duration:2.5s;
+  border-color:rgba(124,58,237,.6)}
+.reticle-dot{position:absolute;width:5px;height:5px;border-radius:50%;
+  background:var(--cyan);box-shadow:0 0 12px var(--cyan)}
+.reticle-mark{position:absolute;background:var(--cyan);opacity:.55}
+.reticle-mark.h{width:10px;height:1px}
+.reticle-mark.v{width:1px;height:10px}
+.reticle-mark.top{top:22%;left:50%;transform:translate(-50%,0)}
+.reticle-mark.bottom{bottom:22%;left:50%;transform:translate(-50%,0)}
+.reticle-mark.left{left:22%;top:50%;transform:translate(0,-50%)}
+.reticle-mark.right{right:22%;top:50%;transform:translate(0,-50%)}
+
+/* ── SCANNER LABEL ────────────────────────────────────────────── */
+.scanner-label{position:absolute;bottom:-24px;left:0;right:0;
+  text-align:center;font-family:var(--font-hud);
+  font-size:clamp(8px,1.6vw,10px);letter-spacing:.22em;
+  color:rgba(0,229,255,.55);pointer-events:none;
+  transition:color .4s,opacity .4s;
+  animation:blink 2.8s ease-in-out infinite}
+.scanner-label.active{color:rgba(0,229,255,.95);animation:none}
+.scanner-label.done{color:rgba(0,255,136,.8);animation:none}
+
+/* ── SCAN RING (countdown inside webcam) ──────────────────────── */
+.scan-ring-wrap{position:absolute;inset:0;z-index:18;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .35s}
+.scan-ring-wrap.active{opacity:1}
+.scan-ring-svg{width:104px;height:104px;position:absolute}
+.scan-ring-svg circle{fill:none;stroke:var(--cyan);stroke-width:2.5;
+  stroke-dasharray:283;stroke-dashoffset:283;
+  transform-origin:center;transform:rotate(-90deg);
+  transition:stroke-dashoffset 3s linear,stroke .4s}
+.scan-ring-svg.go circle{stroke-dashoffset:0}
+.scan-ring-outer{position:absolute;width:128px;height:128px;border-radius:50%;
+  border:1px solid rgba(0,229,255,.25);
+  animation:ring-expand 1.1s ease-out infinite}
+.scan-counter{font-family:var(--font-hud);
+  font-size:clamp(34px,7.5vw,52px);
+  color:var(--cyan);text-shadow:0 0 36px var(--cyan-glow);
+  position:absolute;
+  transition:transform .1s,opacity .1s}
+.scan-counter.tick{transform:scale(1.4);opacity:.4}
+.scan-analyzing{position:absolute;top:calc(50% + 44px);left:0;right:0;
+  text-align:center;font-family:var(--font-hud);font-size:9px;
+  letter-spacing:.35em;color:rgba(0,229,255,.75);
+  animation:blink .9s ease-in-out infinite}
+
+/* ── COMPUTING OVERLAY ────────────────────────────────────────── */
+.computing-overlay{position:absolute;inset:0;z-index:17;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;opacity:0;pointer-events:none;transition:opacity .3s}
+.computing-overlay.active{opacity:1}
+/* outer decorative ring */
+.computing-ring-outer{width:80px;height:80px;border-radius:50%;
+  border:.5px solid rgba(0,229,255,.12);position:absolute;
+  animation:ring-expand 1.4s ease-out infinite}
+/* spinner ring */
+.computing-ring{width:56px;height:56px;border-radius:50%;
+  border:1.5px solid rgba(0,229,255,.15);
+  border-top-color:var(--cyan);border-right-color:rgba(0,229,255,.5);
+  animation:spin .7s linear infinite}
+/* inner dot */
+.computing-dot-inner{width:6px;height:6px;border-radius:50%;
+  background:var(--cyan);box-shadow:0 0 10px var(--cyan);
+  animation:pulse-dot 1.2s ease-in-out infinite;
+  position:absolute}
+.computing-stage{font-family:var(--font-hud);font-size:9px;
+  letter-spacing:.28em;color:rgba(0,229,255,.8);text-transform:uppercase;
+  margin-top:52px;/* below the ring stack */
+  transition:opacity .25s}
+.computing-stage.fade{opacity:0}
+.computing-bar-wrap{width:80px;height:2px;
+  background:rgba(0,229,255,.1);border-radius:1px;overflow:hidden}
+.computing-bar-inner{height:100%;background:var(--cyan);
+  box-shadow:0 0 6px var(--cyan);width:0%;
+  transition:width .25s linear}
+
+/* ── SCAN LINE + ECHO ─────────────────────────────────────────── */
+.scan-line{position:absolute;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,
+    transparent 0%,rgba(0,229,255,.25) 8%,
+    var(--cyan) 28%,#fff 50%,
+    var(--cyan) 72%,rgba(0,229,255,.25) 92%,transparent 100%);
+  box-shadow:0 0 22px rgba(0,229,255,1),0 0 60px rgba(0,229,255,.5),
+             0 3px 14px rgba(0,229,255,.3);
+  top:0;z-index:20;opacity:0;pointer-events:none}
+.scan-echo{position:absolute;left:0;right:0;height:80px;
+  background:linear-gradient(to bottom,rgba(0,229,255,.1),transparent);
+  top:0;z-index:19;opacity:0;pointer-events:none}
+
+/* ── SCAN FLASH ───────────────────────────────────────────────── */
+.scan-flash{position:absolute;inset:0;z-index:22;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 48%,
+    rgba(0,229,255,.5) 0%,rgba(0,229,255,.15) 50%,transparent 100%);
+  opacity:0}
+
+/* ── IDLE EQUALISER ───────────────────────────────────────────── */
+.idle-eq{position:absolute;bottom:28%;left:14px;right:14px;
+  z-index:4;display:flex;align-items:flex-end;gap:3px;
+  height:32px;pointer-events:none;opacity:.3;transition:opacity .6s}
+.eq-bar{flex:1;border-radius:1px 1px 0 0;
+  background:linear-gradient(to top,var(--cyan),var(--violet));
+  animation:eq-bounce var(--dur) ease-in-out infinite alternate;
+  transform-origin:bottom}
+
+/* ── PROMPT ZONE ──────────────────────────────────────────────── */
+.prompt-zone{position:absolute;bottom:19%;left:0;right:0;z-index:10;
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+  transition:opacity .5s,transform .5s}
+.prompt-zone.hidden{opacity:0;transform:translateY(10px);pointer-events:none}
+.prompt-text{font-family:var(--font-ui);
+  font-size:clamp(13px,2.8vw,19px);/* bigger — readable from 1.5m */
+  font-weight:600;letter-spacing:.1em;color:var(--white);
+  text-align:center;text-transform:uppercase}
+/* textos rotativos do idle — fade in/out a cada 4s */
+.prompt-rotator{display:flex;flex-direction:column;align-items:center;gap:5px;
+  transition:opacity .5s ease,transform .5s ease}
+.prompt-rotator.fading{opacity:0;transform:translateY(4px)}
+.prompt-sub{font-family:var(--font-hud);font-size:clamp(8px,1.5vw,11px);
+  letter-spacing:.16em;color:var(--muted);text-align:center}
+
+/* ── SCAN BUTTON ──────────────────────────────────────────────── */
+.scan-btn-wrap{position:absolute;bottom:var(--acima-da-base);left:14px;right:14px;
+  z-index:10;display:flex;justify-content:center;
+  transition:opacity .4s,transform .4s}
+.scan-btn-wrap.hidden{opacity:0;transform:translateY(12px);pointer-events:none}
+.scan-btn{position:relative;width:100%;padding:15px 0;
+  border:none;outline:none;cursor:pointer;overflow:hidden;
+  font-family:var(--font-hud);font-size:clamp(11px,2.2vw,14px);
+  letter-spacing:.32em;text-transform:uppercase;color:var(--bg);
+  background:var(--cyan);
+  box-shadow:0 0 20px rgba(0,229,255,.75),0 0 48px rgba(0,229,255,.3),
+             inset 0 0 24px rgba(0,0,0,.12);
+  transition:box-shadow .25s,transform .12s}
+.scan-btn:hover{
+  box-shadow:0 0 32px rgba(0,229,255,.95),0 0 70px rgba(0,229,255,.45),
+             inset 0 0 24px rgba(0,0,0,.08)}
+.scan-btn:active{transform:scale(.97)}
+.scan-btn:disabled{background:rgba(100,116,139,.5);box-shadow:none;cursor:not-allowed}
+.scan-btn::after{content:'';position:absolute;top:0;left:-120%;width:60%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent);
+  animation:btn-shine 3s ease-in-out infinite}
+.scan-btn-label{position:relative;z-index:1}
+
+/* ── BASE: AVISO + RODAPÉ ─────────────────────────────────────────
+   Empilhados num só bloco (aviso em cima, rodapé embaixo) para nunca
+   se sobreporem. O padding deixa o texto dentro das cantoneiras
+   inferiores (32px, a 12px da borda). A altura do bloco é medida em
+   JS (--base-h) e o botão/painel de resultado ficam sempre acima dele. */
+.hud-frame{--acima-da-base:max(7.5%, calc(var(--base-h, 70px) + 10px))}
+.hud-bottom{position:absolute;bottom:0;left:0;right:0;z-index:10;
+  padding:0 24px 20px;display:flex;flex-direction:column;gap:8px;
+  pointer-events:none}
+
+/* ── DISCLAIMER ───────────────────────────────────────────────── */
+.disclaimer{display:flex;align-items:center;justify-content:center;gap:6px;
+  transition:opacity .4s}
+.disc-icon{width:13px;height:13px;flex-shrink:0;border:1px solid var(--amber);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:8px;color:var(--amber);font-family:var(--font-hud);font-weight:bold}
+.disc-text{font-family:var(--font-hud);font-size:7px;letter-spacing:.1em;
+  color:rgba(255,184,0,.55);text-transform:uppercase;line-height:1.4;text-align:center}
+
+/* ════════════════════════════════════════════════════════════════
+   RESULT PANEL
+   ════════════════════════════════════════════════════════════════ */
+.result-panel{position:absolute;bottom:var(--acima-da-base);left:14px;right:14px;
+  z-index:15;background:rgba(5,9,20,.97);
+  border:1px solid rgba(0,229,255,.22);
+  padding:14px 16px 12px;
+  opacity:0;transform:translateY(20px) scale(.97);
+  pointer-events:none;
+  transition:opacity .6s cubic-bezier(.16,1,.3,1),
+             transform .6s cubic-bezier(.16,1,.3,1)}
+.result-panel.visible{opacity:1;transform:translateY(0) scale(1);
+  pointer-events:auto}
+
+/* tricolour top bar — expands from left */
+.result-top-bar{height:2px;margin-bottom:12px;
+  background:linear-gradient(90deg,var(--cyan) 0%,var(--violet) 55%,var(--green) 100%);
+  box-shadow:0 0 14px rgba(0,229,255,.55);
+  transform:scaleX(0);transform-origin:left;
+  transition:transform .7s cubic-bezier(.16,1,.3,1) .05s}
+.result-panel.visible .result-top-bar{transform:scaleX(1)}
+
+.result-header{display:flex;justify-content:space-between;
+  align-items:center;margin-bottom:11px}
+.result-title{font-family:var(--font-hud);font-size:9px;
+  letter-spacing:.22em;color:var(--cyan);text-transform:uppercase}
+.result-ts{font-family:var(--font-hud);font-size:8px;
+  color:var(--muted);letter-spacing:.1em}
+
+/* ─ Emotion rows ─ */
+.emotion-row{display:flex;align-items:center;gap:8px;margin-bottom:9px;
+  opacity:0;transform:translateX(-12px);
+  transition:opacity .45s,transform .45s}
+.emotion-row.show{opacity:1;transform:none}
+
+/* DOMINANT row — larger, brighter, more presence */
+.emotion-row.dominant{margin-bottom:12px}
+.emotion-row.dominant .emotion-name{
+  /* min 17px so it's legible from 1.5m on a portrait monitor */
+  font-size:clamp(17px,3.5vw,22px);
+  color:var(--cyan);
+  text-shadow:0 0 14px rgba(0,229,255,.5);
+  min-width:34%}
+.emotion-row.dominant .bar-track{height:9px}
+.emotion-row.dominant .emotion-pct{
+  font-size:clamp(15px,3.2vw,20px);
+  color:var(--cyan);font-weight:bold;min-width:42px}
+
+/* secondary rows */
+.emotion-name{font-family:var(--font-ui);font-weight:700;
+  font-size:clamp(12px,2.4vw,15px);
+  letter-spacing:.06em;color:var(--offwhite);
+  text-transform:uppercase;min-width:32%}
+.bar-track{flex:1;height:5px;background:rgba(255,255,255,.07);
+  border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;width:0%;
+  transition:width 1.3s cubic-bezier(.16,1,.3,1)}
+.bar-fill.cyan{
+  background:linear-gradient(90deg,var(--cyan-dim),var(--cyan));
+  box-shadow:0 0 10px var(--cyan)}
+.bar-fill.violet{
+  background:linear-gradient(90deg,var(--violet-dim),var(--violet));
+  box-shadow:0 0 10px var(--violet)}
+.bar-fill.green{
+  background:linear-gradient(90deg,var(--green-dim),var(--green));
+  box-shadow:0 0 10px var(--green)}
+.emotion-pct{font-family:var(--font-hud);font-size:clamp(10px,2vw,12px);
+  color:var(--cyan);min-width:36px;text-align:right}
+
+/* separator between dominant and secondaries */
+.result-divider{width:100%;height:1px;
+  background:linear-gradient(90deg,rgba(0,229,255,.25),transparent);
+  margin-bottom:10px;opacity:0;transition:opacity .4s .55s}
+.result-panel.visible .result-divider{opacity:1}
+
+/* ─ AI comment ─ */
+.ai-comment-wrap{margin-top:10px;padding:11px 13px;
+  border:.5px solid rgba(124,58,237,.38);
+  background:rgba(124,58,237,.07);position:relative;
+  opacity:0;transition:opacity .5s}
+.ai-comment-wrap.ready{opacity:1}
+.ai-label{position:absolute;top:-9px;left:8px;
+  font-family:var(--font-hud);font-size:8px;
+  letter-spacing:.15em;color:var(--violet);
+  background:rgba(5,9,20,.97);padding:0 7px}
+.ai-comment{font-family:var(--font-ui);
+  font-size:clamp(12px,2.3vw,15px);
+  font-weight:400;color:var(--offwhite);line-height:1.65;
+  font-style:italic;min-height:2.6em}
+.ai-comment.typing::after{content:'▋';
+  animation:blink .65s step-end infinite;
+  color:var(--violet);font-style:normal}
+
+/* ─ Next-step hint (replaces QR teaser — clearer CTA) ─ */
+.next-hint{margin-top:10px;display:flex;align-items:center;gap:10px;
+  padding:8px 10px;border:.5px solid rgba(0,255,136,.22);
+  background:rgba(0,255,136,.04);
+  opacity:0;transition:opacity .4s}
+.next-hint.show{opacity:1}
+.next-hint-icon{font-family:var(--font-hud);font-size:18px;color:var(--green);
+  flex-shrink:0;line-height:1;
+  animation:pulse-dot 1.8s ease-in-out infinite}
+.next-hint-text{flex:1}
+.next-hint-title{font-family:var(--font-hud);font-size:clamp(8px,1.6vw,10px);
+  letter-spacing:.12em;color:var(--green);text-transform:uppercase;margin-bottom:2px}
+.next-hint-sub{font-family:var(--font-hud);font-size:7px;
+  letter-spacing:.08em;color:var(--muted)}
+
+/* ─ QR Code block ─ */
+.qr-block{margin-top:10px;display:flex;flex-direction:column;align-items:center;
+  gap:8px;padding:12px 10px;
+  border:.5px solid rgba(0,229,255,.28);
+  background:rgba(0,229,255,.04);
+  opacity:0;transition:opacity .5s;
+  position:relative}
+.qr-block.show{opacity:1}
+/* top accent line */
+.qr-block::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--cyan),transparent)}
+
+/* container div do QRCode.js — a biblioteca cria canvas ou img dentro */
+#qrCanvas{
+  background:#fff;
+  padding:6px;
+  border-radius:2px;
+  box-shadow:0 0 0 1px rgba(0,229,255,.3),
+             0 0 16px rgba(0,229,255,.2);
+  line-height:0; /* remove espaço extra abaixo do canvas filho */
+}
+/* canvas gerado internamente pelo QRCode.js */
+#qrCanvas canvas,
+#qrCanvas img{
+  display:block; /* garante sem espaço extra */
+}
+
+.qr-label{font-family:var(--font-hud);font-size:clamp(7px,1.5vw,9px);
+  letter-spacing:.22em;color:var(--cyan);text-transform:uppercase;text-align:center}
+.qr-sub{font-family:var(--font-hud);font-size:clamp(6px,1.1vw,7px);
+  letter-spacing:.1em;color:var(--muted);text-align:center}
+/* error fallback text — shown if QR generation fails */
+.qr-error{font-family:var(--font-hud);font-size:8px;letter-spacing:.1em;
+  color:var(--amber);text-align:center;display:none}
+.qr-block.error .qr-error{display:block}
+.qr-block.error #qrCanvas{display:none}
+
+/* ─ VR button inside next-hint ─ */
+.vr-btn{
+  padding:6px 14px;border:1px solid var(--green);
+  background:rgba(0,255,136,.10);color:var(--green);
+  font-family:var(--font-hud);font-size:clamp(8px,1.5vw,10px);
+  letter-spacing:.18em;text-transform:uppercase;
+  cursor:pointer;flex-shrink:0;
+  transition:background .2s,box-shadow .2s}
+.vr-btn:hover{background:rgba(0,255,136,.22);
+  box-shadow:0 0 12px rgba(0,255,136,.3)}
+.result-reset{margin-top:11px;width:100%;padding:13px;
+  border:1px solid rgba(0,229,255,.35);
+  background:rgba(0,229,255,.09);color:var(--cyan);
+  font-family:var(--font-hud);font-size:clamp(10px,2vw,12px);
+  letter-spacing:.22em;text-transform:uppercase;cursor:pointer;
+  opacity:0;transition:opacity .35s,background .2s,box-shadow .2s;
+  position:relative;overflow:hidden}
+.result-reset::after{content:'';position:absolute;top:0;left:-100%;
+  width:60%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent);
+  animation:btn-shine 3.5s ease-in-out infinite}
+.result-reset.show{opacity:1}
+.result-reset:hover{background:rgba(0,229,255,.18);
+  box-shadow:0 0 20px rgba(0,229,255,.3)}
+
+/* ── FOOTER ───────────────────────────────────────────────────── */
+.hud-footer{display:flex;justify-content:space-between;
+  align-items:flex-end;gap:12px;transition:opacity .5s}
+.footer-col{display:flex;flex-direction:column;gap:2px}
+.footer-line{font-family:var(--font-hud);font-size:clamp(6px,1.1vw,7px);
+  letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
+.footer-line span{color:var(--cyan)}
+
+/* ── BOOT SCREEN ──────────────────────────────────────────────── */
+.loading-overlay{position:absolute;inset:0;z-index:30;background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:16px;transition:opacity .7s}
+.loading-overlay.hidden{opacity:0;pointer-events:none}
+.loading-logo{font-family:var(--font-hud);font-size:clamp(20px,4.5vw,30px);
+  letter-spacing:.5em;color:var(--cyan);
+  text-shadow:0 0 28px rgba(0,229,255,.65);
+  animation:flicker 3s ease-in-out infinite}
+.loading-bar-track{width:58%;height:2px;background:rgba(0,229,255,.1);
+  border-radius:1px;overflow:hidden}
+.loading-bar-fill{height:100%;background:var(--cyan);
+  box-shadow:0 0 8px var(--cyan);width:0%;transition:width .3s ease}
+.loading-status{font-family:var(--font-hud);font-size:clamp(7px,1.4vw,9px);
+  letter-spacing:.22em;color:var(--muted);text-transform:uppercase}
+
+/* ═════════════════════════════════════════════════════════════
+   KEYFRAMES
+   ═════════════════════════════════════════════════════════════ */
+@keyframes pulse-ring{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.2)}}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.18}}
+@keyframes border-pulse{0%,100%{opacity:.35}50%{opacity:.9}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes flicker{0%,96%,100%{opacity:1}97%{opacity:.45}98.5%{opacity:1}99.5%{opacity:.3}}
+@keyframes idle-bar{0%{width:15%}100%{width:85%}}
+@keyframes eq-bounce{0%{height:12%}100%{height:var(--h)}}
+@keyframes btn-shine{0%{left:-120%}55%,100%{left:160%}}
+@keyframes ring-expand{0%{transform:scale(.88);opacity:.9}100%{transform:scale(1.5);opacity:0}}
+@keyframes pop-in{0%{transform:scale(1.6);opacity:0}50%{opacity:1}100%{transform:scale(1);opacity:1}}
+@keyframes dots-cycle{0%{content:'.'}33%{content:'..'}66%,100%{content:'...'}}
+</style>
+</head>
+<body>
+<div class="hud-root">
+ <div class="hud-frame" id="hudFrame">
+
+  <!-- background -->
+  <canvas id="particles"></canvas>
+  <div class="grid-overlay"></div>
+  <div class="ambient-glow"></div>
+
+  <!-- corners -->
+  <div class="corner tl"></div><div class="corner tr"></div>
+  <div class="corner bl"></div><div class="corner br"></div>
+
+  <!-- HEADER -->
+  <div class="hud-header" id="hudHeader">
+   <div class="logo-row">
+    <div class="logo-icon"></div>
+    <span class="logo-text">NEURO LAB</span>
+    <div class="logo-icon"></div>
+   </div>
+   <span class="header-sub">Laboratório de Saúde Digital · v2.2</span>
+  </div>
+
+  <!-- STATUS BAR -->
+  <div class="status-bar" id="statusBar">
+   <div class="status-item">
+    <div class="status-dot"></div>
+    <span class="status-label">Sistema</span>
+    <span class="status-value" id="sysStatus">ONLINE</span>
+   </div>
+   <div class="status-item">
+    <span class="status-label">Câmera</span>
+    <span class="status-value" id="camStatus">AGUARDANDO</span>
+   </div>
+   <div class="status-item">
+    <span class="status-label">IA</span>
+    <span class="status-value" id="aiStatus">PRONTO</span>
+   </div>
+  </div>
+
+  <!-- DISCOVER STRIP -->
+  <div class="discover-strip" id="discoverStrip">
+   <div class="discover-card c">
+    <div class="dc-label">Você vai descobrir</div>
+    <div class="dc-value">7 emoções</div>
+    <div class="dc-sub">mapeadas agora</div>
+    <div class="dc-bar-track"><div class="dc-bar-fill"></div></div>
+   </div>
+   <div class="discover-card v">
+    <div class="dc-label">Próxima etapa</div>
+    <div class="dc-value">VR — 1 minuto</div>
+    <div class="dc-sub">laboratório digital</div>
+    <div class="dc-bar-track"><div class="dc-bar-fill"></div></div>
+   </div>
+   <div class="discover-card g">
+    <div class="dc-label">Você leva</div>
+    <div class="dc-value">Relatório personalizado</div>
+    <div class="dc-sub">dicas suas</div>
+    <div class="dc-bar-track"><div class="dc-bar-fill"></div></div>
+   </div>
+  </div>
+
+  <!-- LEFT RAIL -->
+  <div class="rail left" id="railLeft">
+   <div class="rail-item">
+    <div class="rail-value" id="clockVal">00:00</div>
+    <canvas class="rail-spark" id="sparkL1"></canvas>
+    <div class="rail-label">Horário</div>
+   </div>
+   <div class="rail-tick"></div>
+   <div class="rail-item">
+    <div class="rail-value" id="sessionVal">000</div>
+    <canvas class="rail-spark" id="sparkL2"></canvas>
+    <div class="rail-label">Sessões</div>
+   </div>
+   <div class="rail-tick"></div>
+   <div class="rail-item">
+    <div class="rail-value">98.6</div>
+    <div class="rail-label">Sync%</div>
+   </div>
+  </div>
+
+  <!-- RIGHT RAIL -->
+  <div class="rail right" id="railRight">
+   <div class="rail-item">
+    <div class="rail-value">7</div>
+    <div class="rail-label">Emoções</div>
+   </div>
+   <div class="rail-tick"></div>
+   <div class="rail-item">
+    <div class="rail-value" id="fpsVal">—</div>
+    <canvas class="rail-spark" id="sparkR1"></canvas>
+    <div class="rail-label">FPS</div>
+   </div>
+   <div class="rail-tick"></div>
+   <div class="rail-item">
+    <div class="rail-value">NN</div>
+    <div class="rail-label">Modelo</div>
+   </div>
+  </div>
+
+  <!-- WEBCAM ZONE -->
+  <div class="webcam-zone" id="webcamZone">
+   <div class="webcam-glow-ring"></div>
+   <div class="webcam-border" id="webcamBorder"></div>
+   <div class="wcam-corner tl"></div><div class="wcam-corner tr"></div>
+   <div class="wcam-corner bl"></div><div class="wcam-corner br"></div>
+
+   <video id="videoFeed" class="webcam-feed" autoplay muted playsinline style="display:none"></video>
+   <canvas id="camPlaceholder" class="webcam-feed"></canvas>
+
+   <div class="reticle" id="reticle">
+    <div class="reticle-ring2" id="reticleRing2"></div>
+    <div class="reticle-ring"  id="reticleRing1"></div>
+    <div class="reticle-dot"></div>
+    <div class="reticle-mark h top"></div>
+    <div class="reticle-mark h bottom"></div>
+    <div class="reticle-mark v left"></div>
+    <div class="reticle-mark v right"></div>
+   </div>
+
+   <!-- COUNTDOWN RING -->
+   <div class="scan-ring-wrap" id="scanRing">
+    <div class="scan-ring-outer"></div>
+    <svg class="scan-ring-svg" id="scanRingSvg" viewBox="0 0 100 100">
+     <circle cx="50" cy="50" r="45"/>
+    </svg>
+    <div class="scan-counter" id="scanCounter">3</div>
+    <div class="scan-analyzing">ANALISANDO</div>
+   </div>
+
+   <!-- COMPUTING -->
+   <div class="computing-overlay" id="computingOverlay">
+    <div class="computing-ring-outer"></div>
+    <div class="computing-ring"></div>
+    <div class="computing-dot-inner"></div>
+    <div class="computing-stage" id="computingStage">MAPEANDO EMOÇÕES</div>
+    <div class="computing-bar-wrap">
+     <div class="computing-bar-inner" id="computingBar"></div>
+    </div>
+   </div>
+
+   <div class="scanner-label" id="scannerLabel">▸ POSICIONE SEU ROSTO ◂</div>
+  </div>
+
+  <!-- SCAN LINE + ECHO -->
+  <div class="scan-line" id="scanLine"></div>
+  <div class="scan-echo" id="scanEcho"></div>
+
+  <!-- SCAN FLASH -->
+  <div class="scan-flash" id="scanFlash"></div>
+
+  <!-- IDLE EQ -->
+  <div class="idle-eq" id="idleEq"></div>
+
+  <!-- PROMPT -->
+  <div class="prompt-zone" id="promptZone">
+   <!-- Textos rotativos da tela de atração — controlados por IdleRotator -->
+   <div class="prompt-rotator" id="promptRotator">
+    <div class="prompt-text" id="promptLine1">Descubra seu estado</div>
+    <div class="prompt-text" id="promptLine2" style="color:var(--cyan)">emocional agora</div>
+   </div>
+   <div class="prompt-sub" style="margin-top:3px">Posicione o rosto na área indicada</div>
+  </div>
+
+  <!-- SCAN BUTTON -->
+  <div class="scan-btn-wrap" id="scanBtnWrap">
+   <button class="scan-btn" id="scanBtn" onclick="startScan()">
+    <span class="scan-btn-label">► INICIAR SCAN EMOCIONAL</span>
+   </button>
+  </div>
+
+  <!-- RESULT PANEL -->
+  <div class="result-panel" id="resultPanel">
+   <div class="result-top-bar"></div>
+
+   <div class="result-header">
+    <div class="result-title">◈ Análise Emocional</div>
+    <div class="result-ts" id="resultTs">--:--</div>
+   </div>
+
+   <!-- DOMINANT emotion -->
+   <div class="emotion-row dominant" id="erow1">
+    <div class="emotion-name" id="emo1Name">—</div>
+    <div class="bar-track"><div class="bar-fill cyan" id="bar1"></div></div>
+    <div class="emotion-pct" id="emo1Pct">—</div>
+   </div>
+
+   <div class="result-divider"></div>
+
+   <!-- secondary emotions -->
+   <div class="emotion-row" id="erow2">
+    <div class="emotion-name" id="emo2Name">—</div>
+    <div class="bar-track"><div class="bar-fill violet" id="bar2"></div></div>
+    <div class="emotion-pct" id="emo2Pct">—</div>
+   </div>
+   <div class="emotion-row" id="erow3">
+    <div class="emotion-name" id="emo3Name">—</div>
+    <div class="bar-track"><div class="bar-fill green" id="bar3"></div></div>
+    <div class="emotion-pct" id="emo3Pct">—</div>
+   </div>
+
+   <!-- AI COMMENT -->
+   <div class="ai-comment-wrap" id="aiWrap">
+    <div class="ai-label">NEURO LAB ›</div>
+    <div class="ai-comment" id="aiComment"></div>
+   </div>
+
+   <!-- QR CODE BLOCK -->
+   <div class="qr-block" id="qrBlock">
+    <div id="qrCanvas"></div>
+    <div class="qr-label">ESCANEIE PARA LEVAR SEU RELATÓRIO</div>
+    <div class="qr-sub" id="qrSub">Abra a câmera do celular e aponte para o código</div>
+    <div class="qr-error" id="qrError">Relatório disponível em: <span id="qrFallbackUrl"></span></div>
+   </div>
+
+   <!-- NEXT STEP HINT -->
+   <div class="next-hint" id="nextHint">
+    <div class="next-hint-icon">◎</div>
+    <div class="next-hint-text">
+     <div class="next-hint-title">Próxima etapa: Laboratório VR</div>
+     <div class="next-hint-sub">Coloque o Meta Quest 3S para continuar</div>
+    </div>
+    <button class="vr-btn" onclick="abrirVR()" id="vrBtn">ENTRAR</button>
+   </div>
+
+   <button class="result-reset" id="resetBtn" onclick="resetScan()">
+    ↺  PRÓXIMO VISITANTE
+   </button>
+  </div>
+
+  <!-- BASE: DISCLAIMER + FOOTER (empilhados, ver .hud-bottom) -->
+  <div class="hud-bottom" id="hudBottom">
+   <div class="disclaimer" id="disclaimerEl">
+    <div class="disc-icon">i</div>
+    <div class="disc-text">Experiência educativa · Nenhuma imagem é gravada · Não substitui avaliação médica profissional</div>
+   </div>
+   <div class="hud-footer" id="hudFooter">
+    <div class="footer-col">
+     <div class="footer-line">Expotec <span>2026</span></div>
+     <div class="footer-line">Saúde · Bem-Estar · Tecnologia</div>
+    </div>
+    <div class="footer-col" style="align-items:flex-end">
+     <div class="footer-line">Face-api.js <span>READY</span></div>
+     <div class="footer-line">Node <span>v20</span></div>
+    </div>
+   </div>
+  </div>
+
+  <!-- BOOT -->
+  <div class="loading-overlay" id="loadingOverlay">
+   <div class="loading-logo">NEURO LAB</div>
+   <div class="loading-bar-track">
+    <div class="loading-bar-fill" id="loadBar"></div>
+   </div>
+   <div class="loading-status" id="loadStatus">Inicializando sistema...</div>
+  </div>
+
+ </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   NEURO LAB — HUD v2.2  ·  Refinamento final Fase 2
+   Integração: NLScan via scan.js
+   Som: Web Audio API (inline, sem arquivos externos)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─────────────────────────────────────────────────────────────
+   AUDIO ENGINE
+   Todos os sons sintetizados via Web Audio API — sem arquivos.
+   Chame initAudio() no primeiro clique do usuário (autoplay policy).
+   ───────────────────────────────────────────────────────────── */
+let _audioCtx = null;
+
+function _getCtx() {
+  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (_audioCtx.state === 'suspended') _audioCtx.resume();
+  return _audioCtx;
+}
+
+/* Short utility: play a tone */
+function _tone(freq, type, durationSec, gainPeak = 0.18, delayMs = 0) {
+  setTimeout(() => {
+    try {
+      const ctx = _getCtx();
+      const osc = ctx.createOscillator();
+      const env = ctx.createGain();
+      osc.connect(env); env.connect(ctx.destination);
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      env.gain.setValueAtTime(0, ctx.currentTime);
+      env.gain.linearRampToValueAtTime(gainPeak, ctx.currentTime + 0.02);
+      env.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + durationSec);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + durationSec + 0.05);
+    } catch(e) {}
+  }, delayMs);
+}
+
+/* Noise burst — used for scan sweep */
+function _noise(durationSec, gainPeak = 0.06, delayMs = 0) {
+  setTimeout(() => {
+    try {
+      const ctx   = _getCtx();
+      const buf   = ctx.createBuffer(1, ctx.sampleRate * durationSec, ctx.sampleRate);
+      const data  = buf.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1);
+      const src   = ctx.createBufferSource();
+      const flt   = ctx.createBiquadFilter();
+      const env   = ctx.createGain();
+      src.buffer  = buf;
+      flt.type    = 'bandpass';
+      flt.frequency.value = 2200;
+      flt.Q.value = 0.8;
+      src.connect(flt); flt.connect(env); env.connect(ctx.destination);
+      env.gain.setValueAtTime(gainPeak, ctx.currentTime);
+      env.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + durationSec);
+      src.start(); src.stop(ctx.currentTime + durationSec);
+    } catch(e) {}
+  }, delayMs);
+}
+
+const SFX = {
+  /* TICK — countdown digit change */
+  tick(i) {
+    const freqs = [440, 523, 659]; // do, mi, sol
+    _tone(freqs[3 - i] || 440, 'sine', 0.12, 0.15);
+  },
+  /* SCAN — sweep sensation */
+  scan() {
+    _noise(1.4, 0.05);
+    _tone(800, 'sine', 0.3, 0.08, 0);
+    _tone(1200, 'sine', 0.2, 0.06, 300);
+    _tone(1600, 'sine', 0.15, 0.06, 600);
+  },
+  /* CAPTURE — the flash moment */
+  capture() {
+    _tone(1800, 'sine', 0.08, 0.25);
+    _tone(2400, 'sine', 0.08, 0.20, 60);
+    _tone(900,  'sine', 0.35, 0.12, 80);
+  },
+  /* RESULT — emotional reveal */
+  result() {
+    /* ascending chord: root → third → fifth */
+    _tone(329.6, 'sine', 0.5, 0.14, 0);    // E4
+    _tone(415.3, 'sine', 0.5, 0.12, 160);  // Ab4
+    _tone(523.3, 'sine', 0.6, 0.12, 320);  // C5
+    _tone(659.3, 'sine', 0.8, 0.10, 480);  // E5
+  },
+  /* UI CLICK */
+  click() { _tone(880, 'sine', 0.06, 0.10); },
+  /* RESET */
+  reset() {
+    _tone(523, 'sine', 0.15, 0.10);
+    _tone(440, 'sine', 0.15, 0.08, 120);
+  },
+};
+
+/* ─────────────────────────────────────────────────────────────
+   STATE
+   ───────────────────────────────────────────────────────────── */
+let sessionCount = 0;
+let scanActive   = false;
+let _fpsTicks    = 0;
+
+/* ─────────────────────────────────────────────────────────────
+   BOOT
+   ───────────────────────────────────────────────────────────── */
+const BOOT_STEPS = [
+  {pct:10,  msg:'Carregando módulos...'},
+  {pct:25,  msg:'Verificando câmera...'},
+  {pct:42,  msg:'Iniciando Face-api.js...'},
+  {pct:61,  msg:'Carregando modelos neurais...'},
+  {pct:78,  msg:'Calibrando sensores...'},
+  {pct:93,  msg:'Sincronizando IA...'},
+  {pct:100, msg:'NEURO LAB ONLINE'},
+];
+
+async function runBoot() {
+  const bar     = document.getElementById('loadBar');
+  const status  = document.getElementById('loadStatus');
+  const overlay = document.getElementById('loadingOverlay');
+
+  for (const step of BOOT_STEPS) {
+    bar.style.width    = step.pct + '%';
+    status.textContent = step.msg;
+    await sleep(260 + Math.random() * 220);
+  }
+  await sleep(320);
+  overlay.classList.add('hidden');
+  await sleep(700);
+  overlay.style.display = 'none';
+
+  initClock();
+
+  if (typeof NLScan !== 'undefined') {
+    const ok = await NLScan.init({
+      videoId:'videoFeed', placeholderId:'camPlaceholder',
+      statusId:'camStatus', aiStatusId:'aiStatus', labelId:'scannerLabel',
+      debugOverlay: false,
+    });
+    if (ok) NLScan.startDetection(() => { _fpsTicks++; });
+  } else {
+    document.getElementById('camStatus').textContent = 'SIMULADO';
+  }
+}
+
+/* fps counter */
+setInterval(() => {
+  const fps = Math.min(30, Math.round(_fpsTicks * 5));
+  document.getElementById('fpsVal').textContent = fps || '—';
+  _fpsTicks = 0;
+}, 1000);
+
+/* ─────────────────────────────────────────────────────────────
+   PARTICLES
+   ───────────────────────────────────────────────────────────── */
+function initParticles() {
+  const canvas = document.getElementById('particles');
+  const frame  = document.getElementById('hudFrame');
+  const ctx    = canvas.getContext('2d');
+  let W, H, pts;
+  const resize = () => {
+    W = canvas.width  = frame.offsetWidth;
+    H = canvas.height = frame.offsetHeight;
+    pts = Array.from({length:65}, mkP);
+  };
+  function mkP(){ return {
+    x: Math.random()*W, y: Math.random()*H,
+    vx:(Math.random()-.5)*.28, vy:(Math.random()-.5)*.28,
+    r: Math.random()*1.5+.4,
+    a: Math.random(), da:(Math.random()-.5)*.005,
+  }; }
+  function tick(){
+    ctx.clearRect(0,0,W,H);
+    pts.forEach(p => {
+      p.x+=p.vx; p.y+=p.vy;
+      p.a = Math.max(.04, Math.min(1, p.a + p.da));
+      if(p.a<=.04||p.a>=1) p.da*=-1;
+      if(p.x<0)p.x=W; if(p.x>W)p.x=0;
+      if(p.y<0)p.y=H; if(p.y>H)p.y=0;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(0,229,255,${p.a*.48})`;
+      ctx.fill();
+    });
+    for(let i=0;i<pts.length;i++){
+      for(let j=i+1;j<pts.length;j++){
+        const dx=pts[i].x-pts[j].x, dy=pts[i].y-pts[j].y;
+        const d=Math.sqrt(dx*dx+dy*dy);
+        if(d<90){
+          ctx.beginPath();
+          ctx.moveTo(pts[i].x,pts[i].y);
+          ctx.lineTo(pts[j].x,pts[j].y);
+          ctx.strokeStyle=`rgba(0,229,255,${(1-d/90)*.07})`;
+          ctx.lineWidth=.5; ctx.stroke();
+        }
+      }
+    }
+    requestAnimationFrame(tick);
+  }
+  resize(); window.addEventListener('resize',resize); tick();
+}
+
+/* ─────────────────────────────────────────────────────────────
+   CAM PLACEHOLDER
+   ───────────────────────────────────────────────────────────── */
+function initCamPlaceholder(){
+  const canvas=document.getElementById('camPlaceholder');
+  const ctx=canvas.getContext('2d');
+  let t=0;
+  const resize=()=>{
+    const z=document.getElementById('webcamZone');
+    canvas.width=z.offsetWidth; canvas.height=z.offsetHeight;
+  };
+  function draw(){
+    const w=canvas.width,h=canvas.height;
+    ctx.clearRect(0,0,w,h);
+    ctx.fillStyle='rgba(4,8,16,.72)'; ctx.fillRect(0,0,w,h);
+    ctx.strokeStyle='rgba(0,229,255,.05)'; ctx.lineWidth=.5;
+    for(let x=0;x<w;x+=18){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}
+    for(let y=0;y<h;y+=18){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}
+    const cx=w/2,cy=h*.47,pulse=1+Math.sin(t*.038)*.018;
+    ctx.beginPath();
+    ctx.ellipse(cx,cy,w*.27*pulse,h*.35*pulse,0,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(0,229,255,${.18+Math.sin(t*.038)*.09})`;
+    ctx.lineWidth=1; ctx.setLineDash([5,8]); ctx.stroke(); ctx.setLineDash([]);
+    /* landmark dots */
+    [[.42,.29],[.58,.29],[.50,.47],[.43,.61],[.57,.61],[.50,.68],[.29,.42],[.71,.42]]
+    .forEach(([rx,ry])=>{
+      const b=Math.sin(t*.08+rx*9)*.4+.6;
+      ctx.beginPath();
+      ctx.arc(cx+(rx-.5)*w*.68, cy+(ry-.5)*h*.83, 2.2, 0, Math.PI*2);
+      ctx.fillStyle=`rgba(0,229,255,${.32*b})`; ctx.fill();
+    });
+    /* shimmer */
+    const sY=(t*1.4)%h;
+    const g=ctx.createLinearGradient(0,sY-12,0,sY+12);
+    g.addColorStop(0,'rgba(0,229,255,0)');
+    g.addColorStop(.5,'rgba(0,229,255,.10)');
+    g.addColorStop(1,'rgba(0,229,255,0)');
+    ctx.fillStyle=g; ctx.fillRect(0,sY-12,w,24);
+    /* corner depth lines */
+    ctx.strokeStyle='rgba(0,229,255,.07)'; ctx.lineWidth=.5;
+    [[0,0],[w,0],[w,h],[0,h]].forEach(([ox,oy])=>{
+      ctx.beginPath(); ctx.moveTo(ox,oy);
+      ctx.lineTo(cx+(ox-cx)*.28,cy+(oy-cy)*.28); ctx.stroke();
+    });
+    t++; requestAnimationFrame(draw);
+  }
+  resize(); window.addEventListener('resize',resize); draw();
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SPARKLINES
+   ───────────────────────────────────────────────────────────── */
+function initSparklines(){
+  [{id:'sparkL1',color:'#00E5FF'},{id:'sparkL2',color:'#7C3AED'},{id:'sparkR1',color:'#00FF88'}]
+  .forEach(({id,color})=>{
+    const c=document.getElementById(id); if(!c) return;
+    c.width=28; c.height=16;
+    const ctx=c.getContext('2d');
+    const data=Array.from({length:16},()=>Math.random());
+    function draw(){
+      ctx.clearRect(0,0,28,16); data.push(Math.random()); data.shift();
+      ctx.beginPath();
+      data.forEach((v,i)=>{
+        const x=i*(28/15),y=16-v*13;
+        i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+      });
+      ctx.strokeStyle=color; ctx.lineWidth=1; ctx.stroke();
+      setTimeout(()=>requestAnimationFrame(draw),200);
+    }
+    draw();
+  });
+}
+
+/* ─────────────────────────────────────────────────────────────
+   IDLE EQUALISER
+   ───────────────────────────────────────────────────────────── */
+function initEqualiser(){
+  const eq=document.getElementById('idleEq');
+  for(let i=0;i<30;i++){
+    const bar=document.createElement('div');
+    bar.className='eq-bar';
+    bar.style.cssText=`--h:${20+Math.random()*80}%;--dur:${(1.1+Math.random()*1.9).toFixed(2)}s;animation-delay:${(Math.random()*2).toFixed(2)}s`;
+    eq.appendChild(bar);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   COMPUTING STAGE ANIMATION
+   Cycles through meaningful processing labels with a progress bar.
+   Gives the visitor the sense that real analysis is happening.
+   ───────────────────────────────────────────────────────────── */
+const COMPUTING_STAGES = [
+  'MAPEANDO EXPRESSÕES',
+  'CALIBRANDO EMOÇÕES',
+  'CRUZANDO PADRÕES',
+  'GERANDO PERFIL',
+];
+let _computeInterval = null;
+
+function startComputing(totalMs) {
+  const stageEl = document.getElementById('computingStage');
+  const barEl   = document.getElementById('computingBar');
+  let stageIdx  = 0;
+  const stageMs = totalMs / COMPUTING_STAGES.length;
+
+  /* Animate the progress bar smoothly across the full duration */
+  barEl.style.transition = `width ${totalMs}ms linear`;
+  requestAnimationFrame(() => { barEl.style.width = '100%'; });
+
+  /* Cycle labels */
+  stageEl.textContent = COMPUTING_STAGES[0];
+  _computeInterval = setInterval(() => {
+    stageIdx++;
+    if (stageIdx >= COMPUTING_STAGES.length) {
+      clearInterval(_computeInterval);
+      return;
+    }
+    /* fade out → update → fade in */
+    stageEl.classList.add('fade');
+    setTimeout(() => {
+      stageEl.textContent = COMPUTING_STAGES[stageIdx];
+      stageEl.classList.remove('fade');
+    }, 260);
+  }, stageMs);
+}
+
+function stopComputing() {
+  clearInterval(_computeInterval);
+  _computeInterval = null;
+  /* reset bar for next use */
+  const barEl = document.getElementById('computingBar');
+  barEl.style.transition = 'none';
+  barEl.style.width = '0%';
+}
+
+/* ─────────────────────────────────────────────────────────────
+   CLOCK
+   ───────────────────────────────────────────────────────────── */
+function initClock(){
+  const tick=()=>{
+    const n=new Date();
+    document.getElementById('clockVal').textContent=
+      `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
+  };
+  tick(); setInterval(tick,30000);
+}
+
+/* ═════════════════════════════════════════════════════════════
+   SCAN SEQUENCE
+   Six clearly-named phases. Each phase is a unit of experience.
+   ═════════════════════════════════════════════════════════════ */
+/* Rede de segurança: se qualquer passo do scan lançar erro inesperado,
+   volta para a tela inicial em vez de ficar travado com scanActive=true
+   e sem nenhum botão na tela. */
+async function startScan(){
+  if(scanActive) return;
+  try {
+    await runScan();
+  } catch (err) {
+    console.error('[scan] Erro inesperado, voltando ao início:', err);
+    stopComputing();
+    document.getElementById('computingOverlay').classList.remove('active');
+    document.getElementById('reticle').classList.remove('hidden');
+    document.getElementById('statusBar').classList.remove('scanning');
+    document.getElementById('hudFrame').classList.remove('scanning');
+    resetScan();
+  }
+}
+
+async function runScan(){
+  scanActive = true;
+  SFX.click();   /* acknowledge the button press immediately */
+
+  /* ── refs ───────────────────────────────────────────────── */
+  const frame       = document.getElementById('hudFrame');
+  const scanBtn     = document.getElementById('scanBtn');
+  const scanBtnWrap = document.getElementById('scanBtnWrap');
+  const scanLine    = document.getElementById('scanLine');
+  const scanEcho    = document.getElementById('scanEcho');
+  const scanRing    = document.getElementById('scanRing');
+  const scanRingSvg = document.getElementById('scanRingSvg');
+  const scanCounter = document.getElementById('scanCounter');
+  const scanFlash   = document.getElementById('scanFlash');
+  const promptZone  = document.getElementById('promptZone');
+  const discoverStrip= document.getElementById('discoverStrip');
+  const idleEq      = document.getElementById('idleEq');
+  const disclaimerEl= document.getElementById('disclaimerEl');
+  const statusBar   = document.getElementById('statusBar');
+  const webcamBorder= document.getElementById('webcamBorder');
+  const r1          = document.getElementById('reticleRing1');
+  const r2          = document.getElementById('reticleRing2');
+  const reticle     = document.getElementById('reticle');
+  const scannerLabel= document.getElementById('scannerLabel');
+  const computingOv = document.getElementById('computingOverlay');
+  const railLeft    = document.getElementById('railLeft');
+  const railRight   = document.getElementById('railRight');
+
+  /* ══ PHASE 1 — DISMISS IDLE UI ══════════════════════════════
+     Quick, clean exit of idle elements.
+     ─────────────────────────────────────────────────────────── */
+  scanBtn.disabled = true;
+  IdleRotator.stop(); /* para os textos de atração durante scan + resultado */
+  scanBtnWrap.classList.add('hidden');
+  promptZone.classList.add('hidden');
+  discoverStrip.classList.add('hidden');
+  idleEq.style.opacity     = '0';
+  disclaimerEl.style.opacity = '0';
+  railLeft.classList.add('hidden');
+  railRight.classList.add('hidden');
+
+  statusBar.classList.add('scanning');
+  frame.classList.add('scanning');
+
+  await sleep(350); /* let transitions finish */
+
+  /* ══ PHASE 2 — COUNTDOWN (3…2…1) ════════════════════════════
+     Environment builds tension: rings accelerate, border
+     changes colour each second, each digit sounds different.
+     ─────────────────────────────────────────────────────────── */
+  document.getElementById('aiStatus').textContent  = 'LENDO...';
+  document.getElementById('camStatus').textContent = 'SCAN';
+  scannerLabel.textContent  = '▸ NÃO SE MOVA ◂';
+  scannerLabel.classList.add('active');
+
+  r1.classList.add('fast');
+  r2.classList.add('fast');
+  webcamBorder.classList.add('scanning');
+
+  scanRing.classList.add('active');
+
+  const phaseColors = ['#00E5FF','#7C3AED','#00FF88']; /* 3→2→1 */
+  for(let i=3;i>=1;i--){
+    SFX.tick(i);
+
+    /* digit pop */
+    scanCounter.classList.add('tick');
+    await sleep(55);
+    scanCounter.classList.remove('tick');
+    scanCounter.textContent = i;
+    scanCounter.style.animation='pop-in .3s ease forwards';
+    setTimeout(()=>{ scanCounter.style.animation=''; },320);
+
+    /* colour shift */
+    const col = phaseColors[3-i];
+    document.documentElement.style.setProperty('--phase-color', col);
+    webcamBorder.style.boxShadow=`0 0 28px ${col},0 0 56px rgba(0,229,255,.18)`;
+    scanRingSvg.querySelector('circle').style.stroke = col;
+
+    if(i===3) setTimeout(()=>scanRingSvg.classList.add('go'),20);
+
+    await sleep(960); /* slightly under 1s so the 3s arc matches 3 ticks */
+  }
+
+  scanRing.classList.remove('active');
+  scanRingSvg.classList.remove('go');
+  /* reset ring circle for next use */
+  setTimeout(()=>{ scanRingSvg.querySelector('circle').style.stroke=''; },400);
+
+  /* ══ PHASE 3 — CAPTURE (async) + SWEEP ══════════════════════
+     Start capture immediately while running the visual sweep.
+     The fetch is async so both run in parallel.
+     ─────────────────────────────────────────────────────────── */
+  if(typeof NLScan!=='undefined') NLScan.stopDetection();
+
+  scannerLabel.textContent = '▸ CAPTURANDO ◂';
+  document.getElementById('aiStatus').textContent = 'CAPTURANDO...';
+
+  /* kick off async capture */
+  const capturePromise = (typeof NLScan!=='undefined')
+    ? NLScan.captureResult(null)
+    : Promise.resolve(null);
+
+  /* SCAN LINE SWEEP */
+  SFX.scan();
+  scanLine.style.opacity='1';
+  scanEcho.style.opacity='1';
+  scanLine.style.transition='none';
+  scanLine.style.top='0px';
+  scanEcho.style.transition='none';
+  scanEcho.style.top='0px';
+
+  const frameH=frame.offsetHeight;
+  const sweepStart=performance.now();
+  const sweepDur=1450;
+  await new Promise(resolve=>{
+    function sweep(now){
+      const raw=Math.min((now-sweepStart)/sweepDur,1);
+      const e=raw<.5?2*raw*raw:-1+(4-2*raw)*raw;
+      const y=e*frameH;
+      scanLine.style.top=y+'px';
+      scanEcho.style.top=Math.max(0,y-80)+'px';
+      raw<1?requestAnimationFrame(sweep):resolve();
+    }
+    requestAnimationFrame(sweep);
+  });
+
+  /* ══ PHASE 4 — CAPTURE FLASH ═════════════════════════════════
+     Three-pulse flash with sound. Emotional peak of the scan.
+     ─────────────────────────────────────────────────────────── */
+  SFX.capture();
+
+  for(let p=0;p<3;p++){
+    scanFlash.style.transition='opacity .05s';
+    scanFlash.style.opacity = p===0?'1':'0.45';
+    await sleep(65);
+    scanFlash.style.transition='opacity .14s';
+    scanFlash.style.opacity='0';
+    await sleep(90);
+  }
+
+  scanLine.style.opacity='0';
+  scanEcho.style.opacity='0';
+  webcamBorder.classList.remove('scanning');
+  webcamBorder.style.boxShadow='';
+  document.documentElement.style.setProperty('--phase-color','var(--cyan)');
+
+  /* ══ PHASE 5 — COMPUTING ═════════════════════════════════════
+     Four labelled stages with progress bar. Visitor sees exactly
+     what the IA is "thinking" at each step.
+     ─────────────────────────────────────────────────────────── */
+  const COMPUTE_MS = 1000; /* total computing animation time */
+  document.getElementById('aiStatus').textContent = 'PROCESSANDO...';
+  scannerLabel.textContent = '▸ ANALISANDO ◂';
+  computingOv.classList.add('active');
+  reticle.classList.add('hidden');
+  startComputing(COMPUTE_MS);
+
+  /* Await capture + minimum animation time in parallel */
+  const [capturedResult] = await Promise.all([
+    capturePromise,
+    sleep(COMPUTE_MS + 80),
+  ]);
+
+  stopComputing();
+  computingOv.classList.remove('active');
+  reticle.classList.remove('hidden');
+
+  /* ══ PHASE 6 — RESULT ════════════════════════════════════════
+     Environment shifts: border turns green, frame exits scanning
+     mode, result panel slides up from below.
+     ─────────────────────────────────────────────────────────── */
+  r1.classList.remove('fast');
+  r2.classList.remove('fast');
+  webcamBorder.classList.add('done');
+  statusBar.classList.remove('scanning');
+  frame.classList.remove('scanning');
+  frame.classList.add('result-mode');
+
+  showResult(capturedResult); /* SFX.result() fires inside showResult after panel appears */
+}
+
+/* ─────────────────────────────────────────────────────────────
+   QR CODE — geração e chamada ao servidor
+   ───────────────────────────────────────────────────────────── */
+
+/**
+ * URL base do servidor vista por este navegador.
+ * Só serve de reserva: o QR usa data.urlCompleta, que o servidor monta
+ * com o IP de rede (o HUD roda em localhost, que o celular não alcança).
+ */
+function getServerBase() {
+  const proto = window.location.protocol;
+  const host  = window.location.hostname;
+  const port  = window.location.port || (proto === 'https:' ? '443' : '80');
+  return `${proto}//${host}:${port}`;
+}
+
+/**
+ * Envia as emoções ao servidor, recebe a URL do relatório
+ * e gera o QR code. Chamada assíncrona — não bloqueia a UI.
+ *
+ * @param {Array}  emotions  — array [{name, pct, key}]
+ * @param {string} dominant  — chave da emoção dominante
+ */
+async function postRelatorioEGerarQR(emotions, dominant) {
+  const qrBlock = document.getElementById('qrBlock');
+  const qrCanvas = document.getElementById('qrCanvas');
+  const qrSub    = document.getElementById('qrSub');
+  const qrError  = document.getElementById('qrError');
+  const qrFallback = document.getElementById('qrFallbackUrl');
+
+  // Limpar estado anterior
+  qrBlock.classList.remove('error', 'show');
+  qrCanvas.innerHTML = '';
+
+  try {
+    // ── 1. Chamar o servidor ─────────────────────────────────
+    // Timeout de 15s (servidor desiste da IA em ~8s e usa fallback).
+    // Sem isso, uma rede travada deixaria o QR e o PRÓXIMO VISITANTE
+    // esperando para sempre, já que eles só aparecem quando isto termina.
+    const resp = await fetch('/api/relatorio', {
+      method : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body   : JSON.stringify({ emotions, dominant }),
+      signal : AbortSignal.timeout(15000),
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    const data = await resp.json();
+    if (!data.ok || !data.url) throw new Error('Resposta inválida do servidor');
+
+    // Salvar sessionId para o botão VR usar
+    window._currentSessionId = data.sessionId || null;
+
+    // ── 2. URL completa vem do servidor (IP que o celular alcança) ─
+    const relatorioUrl = data.urlCompleta || `${getServerBase()}${data.url}`;
+    window._publicBase = relatorioUrl.slice(0, relatorioUrl.length - data.url.length);
+
+    // ── 3. Gerar QR com QRCode.js ────────────────────────────
+    // QR precisa de ~160px mínimo para ser escaneável a distância
+    const qrSize = Math.max(160, Math.round(qrCanvas.closest('.qr-block').offsetWidth * 0.55));
+
+    new QRCode(qrCanvas, {
+      text          : relatorioUrl,
+      width         : qrSize,
+      height        : qrSize,
+      colorDark     : '#000000', // QR precisa de contraste máximo para ser lido
+      colorLight    : '#FFFFFF',
+      correctLevel  : QRCode.CorrectLevel.M, // M = boa resiliência, tamanho moderado
+    });
+
+    // Atualiza o sub-texto com a fonte (anthropic ou fallback)
+    const fonte = data.fonte === 'anthropic' ? 'Relatório gerado por IA' : 'Relatório personalizado';
+    qrSub.textContent = `${fonte} · Abra a câmera do celular`;
+
+    console.log(`[QR] Gerado para sessão ${data.sessionId?.slice(0,8)}... | ${relatorioUrl}`);
+
+  } catch (err) {
+    // ── Fallback: mostrar URL como texto se QR falhar ────────
+    console.warn('[QR] Falha na geração:', err.message);
+    qrBlock.classList.add('error');
+    const fallbackUrl = `${window._publicBase || getServerBase()}/relatorio/…`;
+    qrFallback.textContent = fallbackUrl;
+    qrError.style.display = 'block';
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   VR — envia a sessão atual para o Quest
+   O Quest abre sempre localhost:3000/vr/lab.html (adb reverse), sem ?id,
+   então não dá para passar o UUID pela URL. O ENTRAR registra a sessão
+   como "ativa" no servidor e o lab.html busca GET /api/sessao/ativa.
+   Sem sessionId (POST falhou), limpa a ativa → VR genérico, nunca os
+   dados do visitante anterior.
+   Teste no PC: abrir /vr/lab.html em outra aba depois de clicar ENTRAR.
+   ───────────────────────────────────────────────────────────── */
+async function abrirVR() {
+  const btn = document.getElementById('vrBtn');
+  const id  = window._currentSessionId || null;
+  btn.disabled = true;
+  try {
+    const resp = await fetch('/api/vr/ativa', {
+      method : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body   : JSON.stringify({ id }),
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    btn.textContent = id ? 'ENVIADO ✓' : 'VR GENÉRICO ✓';
+    console.log(`[VR] Sessão enviada ao Quest: ${id ? id.slice(0, 8) : '(nenhuma)'}`);
+  } catch (err) {
+    console.warn('[VR] Falha ao registrar sessão ativa:', err.message);
+    btn.textContent = 'TENTAR DE NOVO';
+    btn.disabled = false;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SHOW RESULT
+   ───────────────────────────────────────────────────────────── */
+/* Só os 7 nomes reais do projeto (mesmos de scan.js), com key para o relatório.
+   Percentuais somam no máximo 100%; Tranquilo só lidera com >= 70% (regra do scan.js). */
+const MOCK_FALLBACK = [
+  { emotions:[{name:'Surpreso',pct:64,key:'surprised'},{name:'Feliz',pct:21,key:'happy'},{name:'Tranquilo',pct:11,key:'neutral'}],
+    comment:'Durante o scan, sua expressão mostrou sinais de surpresa. Um ótimo jeito de começar algo novo.',
+    isReal:false },
+  { emotions:[{name:'Feliz',pct:75,key:'happy'},{name:'Surpreso',pct:14,key:'surprised'},{name:'Tranquilo',pct:8,key:'neutral'}],
+    comment:'Durante o scan, sua expressão mostrou sinais de alegria. Que bom começar a experiência assim.',
+    isReal:false },
+  { emotions:[{name:'Tranquilo',pct:78,key:'neutral'},{name:'Feliz',pct:12,key:'happy'},{name:'Surpreso',pct:6,key:'surprised'}],
+    comment:'Durante o scan, sua expressão mostrou sinais de tranquilidade. Um bom ponto de partida para o que vem a seguir.',
+    isReal:false },
+  { emotions:[{name:'Apreensivo',pct:52,key:'fearful'},{name:'Tranquilo',pct:30,key:'neutral'},{name:'Irritado',pct:11,key:'angry'}],
+    comment:'O resultado sugere sinais de apreensão. Na próxima etapa, vamos respirar juntos, no seu ritmo.',
+    isReal:false },
+];
+
+function showResult(result){
+  if(!result) result = MOCK_FALLBACK[sessionCount % MOCK_FALLBACK.length];
+
+  sessionCount++;
+  document.getElementById('sessionVal').textContent = String(sessionCount).padStart(3,'0');
+
+  /* timestamp — set once, cleanly */
+  const n = new Date();
+  const ts = `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
+  document.getElementById('resultTs').textContent = result.isReal ? ts : ts + ' ∿';
+
+  /* scanner label */
+  const lbl = document.getElementById('scannerLabel');
+  lbl.textContent = '▸ SCAN CONCLUÍDO ◂';
+  lbl.classList.remove('active');
+  lbl.classList.add('done');
+  document.getElementById('aiStatus').textContent  = 'CONCLUÍDO';
+  document.getElementById('camStatus').textContent = 'ATIVA';
+
+  /* show panel — SFX fires on the same frame, so sound arrives with the visual */
+  const panel = document.getElementById('resultPanel');
+  panel.classList.add('visible');
+  SFX.result(); /* now in sync with panel appearing */
+
+  /* staggered emotion rows — dominant first, then secondaries */
+  result.emotions.slice(0,3).forEach((e,i) => {
+    const idx = i + 1;
+    document.getElementById(`emo${idx}Name`).textContent = e.name;
+    document.getElementById(`emo${idx}Pct`).textContent  = e.pct + '%';
+    const row = document.getElementById(`erow${idx}`);
+    /* dominant: 120ms, secondary 1: 360ms, secondary 2: 540ms */
+    const delay = i === 0 ? 120 : 240 + i * 180;
+    setTimeout(() => {
+      row.classList.add('show');
+      setTimeout(() => {
+        document.getElementById(`bar${idx}`).style.width = e.pct + '%';
+      }, 100);
+    }, delay);
+  });
+
+  /* AI comment — starts typing after all bars have animated (~700ms) */
+  const commentEl = document.getElementById('aiComment');
+  const aiWrap    = document.getElementById('aiWrap');
+  commentEl.textContent = '';
+  commentEl.classList.add('typing');
+
+  /* Kick off server call in parallel — resultado chega antes do comentário terminar */
+  const emotionsForServer = result.emotions.slice(0, 3).map(e => ({
+    name    : e.name,
+    pct     : e.pct,
+    key     : e.key || 'neutral', // scan.js e MOCK_FALLBACK enviam key; reserva por segurança
+  }));
+  const dominantKey = result.dominant || emotionsForServer[0]?.key || 'neutral';
+  const qrPromise = postRelatorioEGerarQR(emotionsForServer, dominantKey);
+
+  const COMMENT_DELAY = 820;
+  setTimeout(() => {
+    aiWrap.classList.add('ready');
+    const full = result.comment;
+    let ci = 0;
+    const iv = setInterval(() => {
+      commentEl.textContent += full[ci++];
+      if(ci >= full.length){
+        clearInterval(iv);
+        commentEl.classList.remove('typing');
+
+        /* QR aparece quando o comentário terminou — aguarda o fetch + geração */
+        qrPromise.finally(() => {
+          document.getElementById('qrBlock').classList.add('show');
+          /* next hint e reset aparecem depois do QR */
+          setTimeout(() => {
+            document.getElementById('nextHint').classList.add('show');
+            setTimeout(() => {
+              document.getElementById('resetBtn').classList.add('show');
+              document.getElementById('disclaimerEl').style.opacity = '1';
+            }, 300);
+          }, 400);
+        });
+      }
+    }, 24);
+  }, COMMENT_DELAY);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   RESET
+   ───────────────────────────────────────────────────────────── */
+function resetScan(){
+  SFX.reset();
+  scanActive = false;
+  window._currentSessionId = null; // limpar sessão anterior
+  const vrBtn = document.getElementById('vrBtn');
+  vrBtn.disabled = false;
+  vrBtn.textContent = 'ENTRAR';
+  stopComputing(); /* safety — in case reset is called mid-scan */
+
+  const frame = document.getElementById('hudFrame');
+  const panel = document.getElementById('resultPanel');
+
+  panel.classList.remove('visible');
+  frame.classList.remove('result-mode');
+
+  /* reset emotion rows */
+  ['erow1','erow2','erow3'].forEach(id=>document.getElementById(id).classList.remove('show'));
+  ['bar1','bar2','bar3'].forEach(id=>{ document.getElementById(id).style.width='0%'; });
+  document.getElementById('aiWrap').classList.remove('ready');
+  const ac=document.getElementById('aiComment');
+  ac.textContent=''; ac.classList.remove('typing');
+  document.getElementById('nextHint').classList.remove('show');
+  document.getElementById('resetBtn').classList.remove('show');
+
+  /* reset QR block */
+  const qrBlock = document.getElementById('qrBlock');
+  qrBlock.classList.remove('show','error');
+  document.getElementById('qrCanvas').innerHTML = ''; /* limpa canvas filho criado pelo QRCode.js */
+  document.getElementById('qrSub').textContent = 'Abra a câmera do celular e aponte para o código';
+  document.getElementById('qrError').style.display = 'none';
+
+  /* reset computing bar for next session */
+  const cb = document.getElementById('computingBar');
+  cb.style.transition = 'none'; cb.style.width = '0%';
+
+  /* webcam border back to idle */
+  document.getElementById('webcamBorder').classList.remove('done');
+  document.getElementById('scannerLabel').classList.remove('done');
+  document.getElementById('scannerLabel').classList.remove('active');
+  document.getElementById('scannerLabel').textContent='▸ POSICIONE SEU ROSTO ◂';
+
+  /* restore idle elements */
+  document.getElementById('discoverStrip').classList.remove('hidden');
+  document.getElementById('promptZone').classList.remove('hidden');
+  IdleRotator.start(); /* volta para a tela de atração */
+  document.getElementById('idleEq').style.opacity='.3';
+  document.getElementById('disclaimerEl').style.opacity='1';
+  document.getElementById('railLeft').classList.remove('hidden');
+  document.getElementById('railRight').classList.remove('hidden');
+  document.getElementById('scanBtnWrap').classList.remove('hidden');
+
+  const btn=document.getElementById('scanBtn');
+  btn.disabled=false;
+  btn.querySelector('.scan-btn-label').textContent='► INICIAR SCAN EMOCIONAL';
+  document.getElementById('aiStatus').textContent ='PRONTO';
+  document.getElementById('camStatus').textContent='ATIVA';
+
+  if(typeof NLScan!=='undefined') NLScan.startDetection(()=>{ _fpsTicks++; });
+}
+
+/* ─────────────────────────────────────────────────────────────
+   UTIL
+   ───────────────────────────────────────────────────────────── */
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+/* ─────────────────────────────────────────────────────────────
+   IDLE ROTATOR — textos de atração enquanto ninguém é escaneado
+   Cada frase dividida em 2 linhas: branca + ciano (mesmo visual
+   do prompt original). Troca a cada 4s com fade de 0.5s.
+   start(): chamado no load e no PRÓXIMO VISITANTE (resetScan)
+   stop():  chamado no início do scan — resultado também fica parado
+   ───────────────────────────────────────────────────────────── */
+const IdleRotator = (() => {
+  const FRASES = [
+    ['Descubra seu estado',          'emocional agora'],
+    ['A IA analisa sua expressão',   'em tempo real'],
+    ['1 minuto que vai',             'te surpreender'],
+    ['Tecnologia de reconhecimento', 'facial ao vivo'],
+    ['Seu relatório personalizado',  'te espera'],
+  ];
+  const INTERVALO = 4000; /* tempo de cada frase na tela */
+  const FADE      = 500;  /* igual ao transition do .prompt-rotator */
+
+  let idx = 0, timer = null, fadeTimer = null;
+
+  function mostrar(i) {
+    document.getElementById('promptLine1').textContent = FRASES[i][0];
+    document.getElementById('promptLine2').textContent = FRASES[i][1];
+  }
+
+  function proxima() {
+    const el = document.getElementById('promptRotator');
+    el.classList.add('fading');
+    fadeTimer = setTimeout(() => {
+      idx = (idx + 1) % FRASES.length;
+      mostrar(idx);
+      el.classList.remove('fading');
+    }, FADE);
+  }
+
+  return {
+    start() {
+      this.stop();
+      idx = 0;
+      mostrar(idx); /* sempre recomeça pela primeira frase */
+      timer = setInterval(proxima, INTERVALO);
+    },
+    stop() {
+      clearInterval(timer);
+      clearTimeout(fadeTimer);
+      timer = fadeTimer = null;
+      document.getElementById('promptRotator').classList.remove('fading');
+    },
+  };
+})();
+
+/* ─────────────────────────────────────────────────────────────
+   INIT
+   ───────────────────────────────────────────────────────────── */
+/* Altura real do bloco aviso+rodapé → --base-h (o botão e o painel ficam acima).
+   Muda quando o aviso quebra em 2 linhas em telas estreitas. */
+function initBaseHeight(){
+  const frame = document.getElementById('hudFrame');
+  const base  = document.getElementById('hudBottom');
+  const medir = () => frame.style.setProperty('--base-h', base.offsetHeight + 'px');
+  medir();
+  if (window.ResizeObserver) new ResizeObserver(medir).observe(base);
+}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  initBaseHeight();
+  initParticles();
+  initCamPlaceholder();
+  initEqualiser();
+  IdleRotator.start();
+  initSparklines();
+  runBoot();
+});
+</script>
+<script src="scan.js"></script>
+</body>
+</html>

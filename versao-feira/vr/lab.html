@@ -1,0 +1,1410 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEURO LAB — Laboratório Digital</title>
+
+<!--
+  NEURO LAB — vr/lab.html  v2.2
+  Experiência VR de 1 minuto (74s) para Meta Quest 3S via WebXR.
+
+  FLUXO DA EXPERIÊNCIA (tempos contados do clique em ENTRAR):
+    Entrada    (0–16s)  — boas-vindas, laboratório, "olhe ao redor"
+    Resultado  (16–28s) — emoção dominante + secundárias, aviso de não diagnóstico
+    Respiração (28–61s) — 2 ciclos 4-4-6 com a esfera (33–47s e 47–61s)
+    Reflexão   (61–74s) — sessão concluída, orientação para o QR code
+
+  INTEGRAÇÃO:
+    Recebe o UUID via ?id=UUID na URL.
+    Busca os dados em GET /api/sessao/:id (JSON, sem API key).
+    Sem UUID → experiência genérica sem dados pessoais.
+
+  NARRAÇÃO:
+    MP3 pré-gravados em vr/audio/, tocados via Web Audio API.
+    O clique em ENTRAR desbloqueia o áudio (exigência do Quest) e
+    pré-carrega todos os arquivos. Arquivo ausente/corrompido → silêncio.
+    Roteiro completo na constante TIMELINE (script principal).
+
+  v2.1:
+    - Textos 3D desenhados em canvas com fonte do sistema (componente
+      canvas-text): funciona offline e suporta acentos (Ç, Ã, É...).
+    - Animação da esfera roda no tick do A-Frame (funciona dentro do WebXR).
+    - Textos reposicionados acima e à frente da esfera.
+    - Ambiente 360°: grade da sala, pilares, anéis orbitando e painéis de dados.
+-->
+
+<link href="/lib/fonts/fonts.css" rel="stylesheet"><!-- fontes locais das telas de entrada e fim -->
+<script src="lib/aframe-1.5.0.min.js"></script><!-- local: o Quest não depende da internet -->
+
+<script>
+/* ════════════════════════════════════════════════════════════════
+   COMPONENTES A-FRAME
+   Registrados no <head>, antes da cena, como o A-Frame exige.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── ESTADO COMPARTILHADO (componentes ⇄ script principal) ────── */
+window.NL = {
+  started:     false,
+  startTime:   null,
+  sessionId:   null,
+  emotions:    null,
+  phaseLabel:  'AGUARDANDO',
+  breathPhase: 'idle',
+  breathLevel: 0,          // 0 = esfera vazia, 1 = esfera cheia
+};
+
+const SESSION_DURATION = 74; // segundos, do clique em ENTRAR até a tela de encerramento
+
+/* ── CICLOS DE RESPIRAÇÃO ───────────────────────────────────────────
+   Alinhados com as falas 07–11 da TIMELINE (script principal).       */
+const BREATH_CYCLES = [
+  { start: 33, inhale: 4, hold: 4, exhale: 6 }, // inspira 33–37, segura 37–41, solta 41–47
+  { start: 47, inhale: 4, hold: 4, exhale: 6 }, // inspira 47–51, segura 51–55, solta 55–61
+];
+const BREATH_LABELS = { inhale: 'INSPIRE', hold: 'SEGURE', exhale: 'SOLTE' };
+
+const SPHERE_MIN = 0.35, SPHERE_MAX = 0.65;
+const RING_MIN   = 0.42, RING_MAX   = 0.78;
+const RING2_BASE = 0.48; // raio da geometria do breathRing2
+
+/* Fontes do sistema — não dependem de internet e têm acentuação */
+const NL_FONT_UI  = '"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+const NL_FONT_HUD = 'Consolas, "Roboto Mono", "Droid Sans Mono", "Courier New", monospace';
+
+function nlSRGB(tex) {
+  if ('colorSpace' in tex) tex.colorSpace = THREE.SRGBColorSpace;
+  else tex.encoding = THREE.sRGBEncoding;
+}
+function nlAlpha(hex, a) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`;
+}
+function nlLerp(a, b, t)  { return a + (b - a) * t; }
+function nlEaseInOut(t)   { return t < .5 ? 2*t*t : -1+(4-2*t)*t; }
+function nlMMSS(s)        { return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; }
+
+/* ── canvas-text ───────────────────────────────────────────────────
+   Texto 3D renderizado num canvas 2D → textura num plano.
+   Atributos: value, color, size (altura da fonte em metros),
+   maxWidth (metros, quebra de linha automática), weight, spacing (em),
+   glow (0–1), opacity (animável: property "canvas-text.opacity").    */
+AFRAME.registerComponent('canvas-text', {
+  schema: {
+    value:    { default: '' },
+    color:    { default: '#FFFFFF' },
+    size:     { default: 0.1 },
+    maxWidth: { default: 3 },
+    weight:   { default: '700' },
+    spacing:  { default: 0 },
+    glow:     { default: 0.5 },
+    opacity:  { default: 1 },
+  },
+
+  init() {
+    this.canvas   = document.createElement('canvas');
+    this.ctx      = this.canvas.getContext('2d');
+    this.texture  = null;
+    this.material = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, opacity: 0 });
+    this.mesh     = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), this.material);
+    this.mesh.renderOrder = 10; // desenhado depois da esfera transparente
+    this.mesh.visible = false;
+    this.el.setObject3D('mesh', this.mesh);
+  },
+
+  update(old) {
+    const d = this.data;
+    const changed = ['value', 'color', 'size', 'maxWidth', 'weight', 'spacing', 'glow']
+      .some(k => d[k] !== old[k]);
+    if (changed) this._draw(); // animações de opacidade não redesenham o canvas
+    this.material.opacity = d.opacity;
+    this.mesh.visible = !!d.value && d.opacity > 0.01;
+  },
+
+  _draw() {
+    const d = this.data;
+    if (!d.value) return;
+
+    const PPM  = 512;                         // pixels por metro
+    const px   = Math.round(d.size * PPM);
+    const pad  = Math.ceil(px * 0.45);
+    const ctx  = this.ctx;
+    const font = `${d.weight} ${px}px ${NL_FONT_UI}`;
+    const applyFont = () => {
+      ctx.font = font;
+      if ('letterSpacing' in ctx) ctx.letterSpacing = `${(d.spacing * px).toFixed(1)}px`;
+    };
+
+    applyFont();
+    const maxLine = d.maxWidth * PPM - pad * 2;
+    const lines = [];
+    String(d.value).split('\n').forEach(par => {
+      let line = '';
+      par.split(' ').forEach(word => {
+        const test = line ? line + ' ' + word : word;
+        if (line && ctx.measureText(test).width > maxLine) { lines.push(line); line = word; }
+        else line = test;
+      });
+      lines.push(line);
+    });
+
+    const lineH = px * 1.3;
+    const textW = Math.max(...lines.map(l => ctx.measureText(l).width));
+    const w = Math.min(2048, Math.ceil(textW + pad * 2));
+    const h = Math.ceil(lines.length * lineH + pad * 2);
+
+    this.canvas.width  = w;   // redimensionar zera o estado do contexto
+    this.canvas.height = h;
+    applyFont();
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle    = d.color;
+    ctx.shadowColor  = d.color;
+    ctx.shadowBlur   = px * 0.5 * d.glow;
+    lines.forEach((l, i) => ctx.fillText(l, w / 2, pad + lineH * (i + 0.5)));
+
+    // Textura nova a cada redesenho: o tamanho do canvas muda e o WebGL2
+    // não redimensiona texturas já alocadas. Acontece só quando o texto muda.
+    if (this.texture) this.texture.dispose();
+    this.texture = new THREE.CanvasTexture(this.canvas);
+    nlSRGB(this.texture);
+    this.texture.anisotropy = 4;
+    this.material.map = this.texture;
+    this.material.needsUpdate = true;
+
+    this.mesh.geometry.dispose();
+    this.mesh.geometry = new THREE.PlaneGeometry(w / PPM, h / PPM);
+  },
+
+  remove() {
+    if (this.texture) this.texture.dispose();
+    this.mesh.geometry.dispose();
+    this.material.dispose();
+    this.el.removeObject3D('mesh');
+  },
+});
+
+/* ── breath-controller ─────────────────────────────────────────────
+   Anima a esfera e os anéis no ciclo 4-4-6 usando o tick do A-Frame,
+   que continua rodando dentro da sessão WebXR (window.requestAnimationFrame
+   congela no Quest em modo imersivo). Usa object3D.scale em vez de
+   setAttribute('radius'), que recriaria a geometria a cada quadro.
+   Emite "breathphase" na cena quando a fase muda.                    */
+AFRAME.registerComponent('breath-controller', {
+  schema: {
+    ring1: { type: 'selector' },
+    ring2: { type: 'selector' },
+  },
+
+  init() { this.lastPhase = null; },
+
+  tick(time) {
+    const running = NL.started && NL.startTime;
+    const elapsed = running ? (Date.now() - NL.startTime) / 1000 : time / 1000;
+    let phase = 'idle', radius, ringRadius, ring2Radius;
+
+    const cycle = running && BREATH_CYCLES.find(c =>
+      elapsed >= c.start && elapsed < c.start + c.inhale + c.hold + c.exhale);
+
+    if (cycle) {
+      const { inhale, hold, exhale } = cycle;
+      const t = elapsed - cycle.start;
+      if (t < inhale) {
+        phase      = 'inhale';
+        const p    = nlEaseInOut(t / inhale);
+        radius     = nlLerp(SPHERE_MIN, SPHERE_MAX, p);
+        ringRadius = nlLerp(RING_MIN, RING_MAX, p);
+      } else if (t < inhale + hold) {
+        phase       = 'hold';
+        const pulse = Math.sin(((t - inhale) / hold) * Math.PI * 3) * 0.02;
+        radius      = SPHERE_MAX + pulse;
+        ringRadius  = RING_MAX + pulse * 1.2;
+      } else {
+        phase      = 'exhale';
+        const p    = nlEaseInOut((t - inhale - hold) / exhale);
+        radius     = nlLerp(SPHERE_MAX, SPHERE_MIN, p);
+        ringRadius = nlLerp(RING_MAX, RING_MIN, p);
+      }
+      ring2Radius = ringRadius * 1.14;
+    } else {
+      const pulse = Math.sin(elapsed * 0.8) * 0.015;
+      radius      = SPHERE_MIN + pulse;
+      ringRadius  = RING_MIN + pulse * 1.2;
+      ring2Radius = RING_MIN * 1.14 + pulse;
+    }
+
+    this.el.object3D.scale.setScalar(radius / SPHERE_MIN);
+    if (this.data.ring1) this.data.ring1.object3D.scale.setScalar(ringRadius / RING_MIN);
+    if (this.data.ring2) this.data.ring2.object3D.scale.setScalar(ring2Radius / RING2_BASE);
+
+    NL.breathPhase = phase;
+    NL.breathLevel = Math.max(0, Math.min(1, (radius - SPHERE_MIN) / (SPHERE_MAX - SPHERE_MIN)));
+
+    if (phase !== this.lastPhase) {
+      this.lastPhase = phase;
+      this.el.sceneEl.emit('breathphase', { phase });
+    }
+  },
+});
+
+/* ── grid-wall ─────────────────────────────────────────────────────
+   Grade de linhas (1 draw call), sem as diagonais do wireframe.     */
+AFRAME.registerComponent('grid-wall', {
+  schema: {
+    width:   { default: 16 },
+    height:  { default: 7 },
+    cell:    { default: 1 },
+    color:   { default: '#00E5FF' },
+    opacity: { default: 0.08 },
+  },
+  init() {
+    const { width: w, height: h, cell } = this.data;
+    const pts = [];
+    for (let x = -w / 2; x <= w / 2 + 1e-6; x += cell) pts.push(x, -h / 2, 0, x, h / 2, 0);
+    for (let y = -h / 2; y <= h / 2 + 1e-6; y += cell) pts.push(-w / 2, y, 0, w / 2, y, 0);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+    const mat = new THREE.LineBasicMaterial({
+      color: this.data.color, transparent: true, opacity: this.data.opacity, depthWrite: false });
+    this.el.setObject3D('mesh', new THREE.LineSegments(geo, mat));
+  },
+  remove() { this.el.removeObject3D('mesh'); },
+});
+
+/* ── data-panel ────────────────────────────────────────────────────
+   Painel holográfico com dados animados, desenhado em canvas 640×360.
+   Redesenha só a cada `interval` ms (conservador para o Quest 3S).
+   kind: wave | bars | gauge | status | logo
+   tag:  etiqueta do canto. Só "LIVE" (dado real da sessão) ganha o
+         ponto verde piscando; as demais (CONCEITO, DEMONSTRAÇÃO) não. */
+AFRAME.registerComponent('data-panel', {
+  schema: {
+    title:    { default: 'DADOS' },
+    tag:      { default: 'LIVE' },
+    kind:     { default: 'wave' },
+    color:    { default: '#00E5FF' },
+    width:    { default: 1.9 },
+    interval: { default: 500 },
+  },
+
+  init() {
+    this.W = 640; this.H = 360;
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = this.W; this.canvas.height = this.H;
+    this.ctx = this.canvas.getContext('2d');
+    this.texture = new THREE.CanvasTexture(this.canvas);
+    nlSRGB(this.texture);
+    const w = this.data.width, h = w * this.H / this.W;
+    this.mesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(w, h),
+      new THREE.MeshBasicMaterial({ map: this.texture, transparent: true, depthWrite: false }));
+    this.el.setObject3D('mesh', this.mesh);
+    this.seed = Math.random() * 100;
+    this.next = Math.random() * this.data.interval; // escalona os painéis entre si
+    this._draw(0);
+  },
+
+  tick(time) {
+    if (time < this.next) return;
+    this.next = time + this.data.interval;
+    this._draw(time / 1000);
+  },
+
+  _draw(t) {
+    const c = this.ctx, W = this.W, H = this.H, col = this.data.color;
+    c.clearRect(0, 0, W, H);
+
+    // Fundo + moldura com cantoneiras
+    c.fillStyle = 'rgba(8,13,26,0.78)';
+    c.fillRect(0, 0, W, H);
+    c.strokeStyle = nlAlpha(col, 0.35); c.lineWidth = 2;
+    c.strokeRect(6, 6, W - 12, H - 12);
+    c.strokeStyle = col; c.lineWidth = 4;
+    const k = 28;
+    [[6, 6, 1, 1], [W - 6, 6, -1, 1], [6, H - 6, 1, -1], [W - 6, H - 6, -1, -1]].forEach(([x, y, sx, sy]) => {
+      c.beginPath(); c.moveTo(x + k * sx, y); c.lineTo(x, y); c.lineTo(x, y + k * sy); c.stroke();
+    });
+
+    if (this.data.kind !== 'logo') {
+      c.font = `20px ${NL_FONT_HUD}`;
+      c.textAlign = 'left'; c.textBaseline = 'middle';
+      c.fillStyle = col;
+      c.fillText(this.data.title, 28, 36);
+      // Espectro emocional sem sessão mostra valores de exemplo
+      const tag = this.data.kind === 'bars' && !(NL.emotions && NL.emotions.length)
+        ? 'DEMONSTRAÇÃO' : this.data.tag;
+      c.textAlign = 'right';
+      if (tag === 'LIVE') {
+        const on = Math.floor(t * 2) % 2 === 0;
+        c.fillStyle = on ? '#00FF88' : 'rgba(0,255,136,.25)';
+        c.beginPath(); c.arc(W - 92, 36, 6, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#64748B';
+      } else {
+        c.fillStyle = '#FFB800'; // âmbar, como o aviso do HUD: não é medição ao vivo
+      }
+      c.fillText(tag, W - 28, 36);
+      c.textAlign = 'left';
+      c.fillStyle = nlAlpha(col, 0.25);
+      c.fillRect(28, 58, W - 56, 2);
+    }
+
+    const fn = this['_' + this.data.kind];
+    if (fn) fn.call(this, c, t, W, H, col);
+    this.texture.needsUpdate = true;
+  },
+
+  _wave(c, t, W, H) {
+    const cols = ['#00E5FF', '#7C3AED', '#00FF88'];
+    const names = ['α', 'β', 'θ'];
+    const x0 = 60, x1 = W - 28, top = 76, bot = H - 26;
+    c.strokeStyle = 'rgba(100,116,139,.18)'; c.lineWidth = 1;
+    for (let i = 0; i <= 6; i++) {
+      const y = top + (bot - top) * i / 6;
+      c.beginPath(); c.moveTo(x0, y); c.lineTo(x1, y); c.stroke();
+    }
+    cols.forEach((cc, i) => {
+      const mid = top + (bot - top) * (i + 0.5) / 3, amp = (bot - top) / 8;
+      c.fillStyle = cc; c.font = `18px ${NL_FONT_HUD}`; c.textAlign = 'left';
+      c.fillText(names[i], 30, mid);
+      c.strokeStyle = cc; c.lineWidth = 2.5; c.beginPath();
+      for (let x = x0; x <= x1; x += 6) {
+        const u = x * 0.035 + t * (1.6 + i * 0.7) + this.seed;
+        const y = mid + amp * (Math.sin(u) * 0.6 + Math.sin(u * 2.3 + i) * 0.3 + Math.sin(u * 5.1) * 0.1);
+        x === x0 ? c.moveTo(x, y) : c.lineTo(x, y);
+      }
+      c.stroke();
+    });
+  },
+
+  _bars(c, t, W, H) {
+    const emo = (NL.emotions && NL.emotions.length)
+      ? NL.emotions.slice(0, 5).map(e => [e.name, Number(e.pct) || 0])
+      : [['Feliz', 38], ['Tranquilo', 27], ['Surpreso', 15], ['Triste', 11], ['Irritado', 6]]; // DEMONSTRAÇÃO (soma 97%)
+    const cols = ['#00E5FF', '#7C3AED', '#00FF88', '#00E5FF', '#7C3AED'];
+    const n = emo.length, x0 = 40, top = 82, bot = H - 66, gap = 18;
+    const bw = (W - 80 - gap * (n - 1)) / n;
+    c.font = `16px ${NL_FONT_HUD}`; c.textAlign = 'center';
+    emo.forEach(([name, pct], i) => {
+      const v = Math.max(0.04, Math.min(1, pct / 100 + Math.sin(t * 1.3 + i * 1.7) * 0.03));
+      const x = x0 + i * (bw + gap), hgt = (bot - top) * v;
+      c.fillStyle = nlAlpha(cols[i], 0.15); c.fillRect(x, top, bw, bot - top);
+      c.fillStyle = cols[i];               c.fillRect(x, bot - hgt, bw, hgt);
+      c.fillStyle = '#CBD5E1';
+      c.fillText(String(name).toUpperCase().slice(0, 9), x + bw / 2, bot + 22);
+      c.fillStyle = cols[i];
+      c.fillText(Math.round(v * 100) + '%', x + bw / 2, bot + 46);
+    });
+  },
+
+  _gauge(c, t, W, H) {
+    const phaseCol = { inhale: '#00E5FF', hold: '#7C3AED', exhale: '#00FF88', idle: '#00E5FF' };
+    const pc = phaseCol[NL.breathPhase] || '#00E5FF';
+    const cx = 170, cy = 210, r = 100, lvl = NL.breathLevel;
+    c.lineWidth = 14; c.lineCap = 'round';
+    c.strokeStyle = 'rgba(100,116,139,.2)';
+    c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.stroke();
+    c.strokeStyle = pc;
+    c.beginPath(); c.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.02, lvl)); c.stroke();
+    c.lineCap = 'butt';
+    c.fillStyle = '#FFFFFF'; c.textAlign = 'center';
+    c.font = `600 44px ${NL_FONT_UI}`;
+    c.fillText(Math.round(lvl * 100) + '%', cx, cy);
+
+    const rows = [
+      ['FASE',  BREATH_LABELS[NL.breathPhase] || 'EM ESPERA', pc],
+      ['CICLO', '4 · 4 · 6 s', '#CBD5E1'],
+      ['RITMO', '≈ 4,3 resp/min', '#CBD5E1'],
+    ];
+    c.textAlign = 'left';
+    rows.forEach(([k, v, vc], i) => {
+      const y = 130 + i * 62;
+      c.fillStyle = '#64748B'; c.font = `16px ${NL_FONT_HUD}`;    c.fillText(k, 320, y);
+      c.fillStyle = vc;        c.font = `600 26px ${NL_FONT_UI}`; c.fillText(v, 320, y + 26);
+    });
+  },
+
+  _status(c, t, W, H) {
+    const el = NL.started && NL.startTime ? Math.floor((Date.now() - NL.startTime) / 1000) : 0;
+    const rows = [
+      ['SESSÃO', NL.sessionId ? NL.sessionId.slice(0, 8).toUpperCase() : 'GENÉRICA'],
+      ['TEMPO',  `${nlMMSS(Math.min(SESSION_DURATION, el))} / ${nlMMSS(SESSION_DURATION)}`],
+      ['FASE',   NL.phaseLabel],
+      ['REDE',   'LOCAL · OK'],
+    ];
+    c.textAlign = 'left';
+    rows.forEach(([k, v], i) => {
+      const y = 96 + i * 50;
+      c.fillStyle = '#64748B'; c.font = `20px ${NL_FONT_HUD}`;    c.fillText(k, 36, y);
+      c.fillStyle = i === 2 ? '#00FF88' : '#E2E8F0';
+      c.font = `600 26px ${NL_FONT_UI}`; c.fillText(v, 210, y);
+      c.fillStyle = 'rgba(100,116,139,.15)'; c.fillRect(36, y + 22, W - 72, 1);
+    });
+  },
+
+  _logo(c, t, W, H) {
+    // Hexágono girando + nome do laboratório + linha de varredura
+    const cx = 130, cy = H / 2, r = 70, a0 = t * 0.4;
+    c.strokeStyle = '#7C3AED'; c.lineWidth = 3;
+    c.beginPath();
+    for (let i = 0; i <= 6; i++) {
+      const a = a0 + i * Math.PI / 3;
+      i ? c.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r) : c.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+    }
+    c.stroke();
+    c.strokeStyle = '#00E5FF'; c.lineWidth = 2;
+    c.beginPath(); c.arc(cx, cy, r * 0.55, 0, Math.PI * 2); c.stroke();
+    c.fillStyle = '#00FF88';
+    c.beginPath(); c.arc(cx, cy, 8, 0, Math.PI * 2); c.fill();
+
+    c.textAlign = 'left';
+    c.fillStyle = '#00E5FF'; c.font = `700 64px ${NL_FONT_UI}`;
+    c.fillText('NEURO LAB', 240, cy - 26);
+    c.fillStyle = '#CBD5E1'; c.font = `500 22px ${NL_FONT_UI}`;
+    c.fillText('Laboratório Digital de Bem-Estar', 242, cy + 24);
+    c.fillStyle = '#64748B'; c.font = `18px ${NL_FONT_HUD}`;
+    c.fillText('EXPOTEC 2026 · SCAN EMOCIONAL', 242, cy + 58);
+
+    const sy = 20 + ((t * 60) % (H - 40));
+    c.fillStyle = 'rgba(0,229,255,.18)';
+    c.fillRect(10, sy, W - 20, 3);
+  },
+});
+</script>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080D1A; --cyan:#00E5FF; --violet:#7C3AED;
+  --green:#00FF88; --white:#FFFFFF; --muted:#64748B;
+  --font-hud:'Share Tech Mono',monospace;
+  --font-ui:'Rajdhani',sans-serif;
+}
+body{background:var(--bg);color:var(--white);font-family:var(--font-ui);overflow:hidden}
+
+/* ── TELA DE ENTRADA ─────────────────────────────────────────── */
+#entry-screen{
+  position:fixed;inset:0;z-index:100;
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:18px;background:var(--bg);
+  transition:opacity .7s}
+#entry-screen.hidden{opacity:0;pointer-events:none}
+
+.entry-logo{font-family:var(--font-hud);font-size:clamp(16px,5vw,26px);
+  letter-spacing:.45em;color:var(--cyan);
+  text-shadow:0 0 20px rgba(0,229,255,.6)}
+.entry-divider{width:60px;height:1px;background:rgba(0,229,255,.3)}
+.entry-title{font-family:var(--font-ui);font-size:clamp(13px,3.5vw,20px);
+  font-weight:600;color:var(--white);text-align:center;letter-spacing:.06em}
+.entry-sub{font-family:var(--font-hud);font-size:clamp(9px,2.5vw,12px);
+  color:var(--muted);letter-spacing:.12em;text-align:center;
+  max-width:300px;line-height:1.7}
+.entry-session{font-family:var(--font-hud);font-size:clamp(8px,2vw,10px);
+  color:rgba(0,229,255,.5);letter-spacing:.15em;text-align:center}
+.entry-btn{
+  margin-top:8px;padding:13px 34px;
+  border:none;outline:none;cursor:pointer;
+  background:var(--cyan);color:var(--bg);
+  font-family:var(--font-hud);font-size:clamp(10px,2.8vw,14px);
+  letter-spacing:.25em;text-transform:uppercase;
+  box-shadow:0 0 24px rgba(0,229,255,.5);
+  transition:box-shadow .2s,transform .15s}
+.entry-btn:hover{box-shadow:0 0 40px rgba(0,229,255,.8)}
+.entry-btn:active{transform:scale(.97)}
+.entry-note{font-family:var(--font-hud);font-size:clamp(7px,1.8vw,9px);
+  color:var(--muted);letter-spacing:.1em;text-align:center}
+
+/* ── TELA DE ENCERRAMENTO ────────────────────────────────────── */
+#end-screen{
+  position:fixed;inset:0;z-index:100;
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:14px;
+  background:rgba(8,13,26,.96);
+  opacity:0;pointer-events:none;transition:opacity 1.2s}
+#end-screen.visible{opacity:1;pointer-events:auto}
+.end-icon{font-size:32px;color:var(--green);
+  text-shadow:0 0 20px rgba(0,255,136,.5)}
+.end-title{font-family:var(--font-ui);font-size:clamp(15px,4vw,22px);
+  font-weight:600;color:var(--white);text-align:center;letter-spacing:.06em}
+.end-sub{font-family:var(--font-hud);font-size:clamp(8px,2.2vw,11px);
+  color:var(--muted);letter-spacing:.12em;text-align:center;line-height:1.7;
+  max-width:280px}
+.end-hint{font-family:var(--font-hud);font-size:clamp(9px,2.5vw,12px);
+  color:var(--cyan);letter-spacing:.15em;text-align:center;
+  animation:pulse-text 2s ease-in-out infinite}
+
+/* ── TIMER ───────────────────────────────────────────────────── */
+#session-timer{
+  position:fixed;top:16px;right:16px;z-index:50;
+  font-family:var(--font-hud);font-size:12px;
+  color:rgba(0,229,255,.45);letter-spacing:.1em;display:none}
+
+/* ── FASE INDICATOR ──────────────────────────────────────────── */
+#phase-indicator{
+  position:fixed;top:16px;left:16px;z-index:50;
+  font-family:var(--font-hud);font-size:9px;
+  color:rgba(0,229,255,.3);letter-spacing:.15em;
+  text-transform:uppercase;display:none}
+
+@keyframes pulse-text{0%,100%{opacity:1}50%{opacity:.35}}
+</style>
+</head>
+<body>
+
+<!-- ── TELA DE ENTRADA ──────────────────────────────────────────── -->
+<div id="entry-screen">
+  <div class="entry-logo">NEURO LAB</div>
+  <div class="entry-divider"></div>
+  <div class="entry-title">Laboratório Digital de Bem-Estar</div>
+  <div class="entry-sub" id="entrySubText">
+    Uma experiência de 1 minuto.<br>
+    Respire fundo e siga o laboratório.
+  </div>
+  <div class="entry-session" id="entrySession"></div>
+  <button class="entry-btn" onclick="startExperience()">
+    ▶ ENTRAR NO LABORATÓRIO
+  </button>
+  <div class="entry-note">NEURO LAB · Expotec 2026</div>
+</div>
+
+<!-- ── TIMER + FASE ──────────────────────────────────────────────── -->
+<div id="session-timer">01:14</div>
+<div id="phase-indicator">FASE 1</div>
+
+<!-- ── TELA DE ENCERRAMENTO ─────────────────────────────────────── -->
+<div id="end-screen">
+  <div class="end-icon">◎</div>
+  <div class="end-title">Sessão concluída</div>
+  <div class="end-sub">
+    Você completou a experiência.<br>
+    Tire o óculos com cuidado.
+  </div>
+  <div class="end-hint">▸ ESCANEIE O QR CODE NA TELA ◂</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     CENA A-FRAME
+     ══════════════════════════════════════════════════════════ -->
+<a-scene
+  id="vrScene"
+  background="color: #080D1A"
+  fog="type: exponential; color: #080D1A; density: 0.035"
+  renderer="antialias: true; colorManagement: true; physicallyCorrectLights: true"
+  vr-mode-ui="enabled: false"
+  loading-screen="enabled: false">
+
+  <!-- ── ILUMINAÇÃO ─────────────────────────────────────────── -->
+  <a-light type="ambient"     color="#0D1B35" intensity="1.2"></a-light>
+  <a-light type="directional" color="#00E5FF" intensity="0.4" position="0 8 -4"></a-light>
+  <a-light type="point" id="lightViolet" color="#7C3AED" intensity="0.8"
+           position="0 2 -3" distance="12" decay="2"></a-light>
+  <a-light type="point" id="lightGreen"  color="#00FF88" intensity="0.2"
+           position="0 -1 0" distance="8"  decay="2"></a-light>
+
+  <!-- ── CHÃO ────────────────────────────────────────────────── -->
+  <a-plane position="0 -1.6 0" rotation="-90 0 0" width="30" height="30"
+    material="color:#080D1A; opacity:0.9"></a-plane>
+  <a-entity position="0 -1.59 0" rotation="-90 0 0"
+    grid-wall="width:16; height:16; color:#00E5FF; opacity:0.12"></a-entity>
+
+  <!-- ── ESFERA DE RESPIRAÇÃO ───────────────────────────────── -->
+  <!-- O tamanho é animado via escala pelo componente breath-controller.
+       Raio máximo dos anéis ≈ 0.89 → topo do conjunto em y ≈ 1.25. -->
+  <a-sphere id="breathSphere" position="0 0.45 -3.2" radius="0.35"
+    segments-height="24" segments-width="24"
+    breath-controller="ring1: #breathRing; ring2: #breathRing2"
+    material="color:#00E5FF; opacity:0.22; transparent:true;
+              emissive:#00E5FF; emissiveIntensity:0.4; side:double">
+  </a-sphere>
+
+  <a-torus id="breathRing" position="0 0.45 -3.2" radius="0.42" radius-tubular="0.006"
+    segments-radial="6" segments-tubular="64"
+    material="color:#00E5FF; opacity:0.5; transparent:true;
+              emissive:#00E5FF; emissiveIntensity:0.8">
+  </a-torus>
+  <a-torus id="breathRing2" position="0 0.45 -3.2" radius="0.48" radius-tubular="0.004"
+    segments-radial="6" segments-tubular="64"
+    rotation="45 0 0"
+    animation="property:rotation; to:45 360 0; dur:24000; loop:true; easing:linear"
+    material="color:#7C3AED; opacity:0.28; transparent:true;
+              emissive:#7C3AED; emissiveIntensity:0.6">
+  </a-torus>
+
+  <!-- ── PARTÍCULAS ─────────────────────────────────────────── -->
+  <a-entity id="particles"></a-entity>
+
+  <!-- ── TEXTOS 3D ──────────────────────────────────────────── -->
+  <!-- Todos em z=-2.8 (à frente da esfera, z=-3.2) e acima dela, sem sobreposição.
+       Fonte do sistema via canvas-text: funciona offline e com acentuação. -->
+
+  <!-- Linha 1: identificação da sessão / fase -->
+  <a-entity id="textLine1" position="0 2.50 -2.8"
+    canvas-text="color:#00E5FF; size:0.11; maxWidth:3.2; spacing:0.12; glow:0.7; opacity:0">
+  </a-entity>
+
+  <!-- Linha 2: dado principal (emoção dominante ou instrução) -->
+  <a-entity id="textLine2" position="0 2.20 -2.8"
+    canvas-text="color:#FFFFFF; size:0.17; maxWidth:3.4; spacing:0.04; glow:0.4; opacity:0">
+  </a-entity>
+
+  <!-- Linha 3: dado secundário / emoções / porcentagem -->
+  <a-entity id="textLine3" position="0 1.93 -2.8"
+    canvas-text="color:#CBD5E1; size:0.085; maxWidth:3.2; weight:600; glow:0.2; opacity:0">
+  </a-entity>
+
+  <!-- Linha 4: comentário da IA / instrução de respiração (até 2 linhas) -->
+  <a-entity id="textLine4" position="0 1.66 -2.8"
+    canvas-text="color:#94A3B8; size:0.075; maxWidth:2.6; weight:500; glow:0; opacity:0">
+  </a-entity>
+
+  <!-- Label da fase de respiração (INSPIRE / SEGURE / SOLTE).
+       Ocupa o lugar da linha 2, que fica vazia durante a respiração e a reflexão. -->
+  <a-entity id="breathLabel" position="0 2.20 -2.8"
+    canvas-text="color:#00E5FF; size:0.2; maxWidth:3; spacing:0.2; glow:0.9; opacity:0">
+  </a-entity>
+
+  <!-- ══ AMBIENTE 360° ═══════════════════════════════════════════ -->
+
+  <!-- Sala: grades nas 4 paredes (piso em y=-1.6, altura 7m) -->
+  <a-entity position="0 1.9 -8"
+    grid-wall="width:16; height:7; color:#00E5FF; opacity:0.08"></a-entity>
+  <a-entity position="0 1.9 8" rotation="0 180 0"
+    grid-wall="width:16; height:7; color:#00E5FF; opacity:0.08"></a-entity>
+  <a-entity position="-8 1.9 0" rotation="0 90 0"
+    grid-wall="width:16; height:7; color:#7C3AED; opacity:0.1"></a-entity>
+  <a-entity position="8 1.9 0" rotation="0 -90 0"
+    grid-wall="width:16; height:7; color:#7C3AED; opacity:0.1"></a-entity>
+
+  <!-- Pilares de luz em círculo (gerados em buildEnvironment) -->
+  <a-entity id="pillars"></a-entity>
+
+  <!-- Anel orbital superior (ciano) com nós girando -->
+  <a-entity position="0 3.4 0"
+    animation="property:rotation; to:0 360 0; dur:90000; loop:true; easing:linear">
+    <a-torus radius="5" radius-tubular="0.012" segments-radial="4" segments-tubular="96"
+      rotation="90 0 0" material="shader:flat; color:#00E5FF; opacity:0.35; transparent:true"></a-torus>
+    <a-octahedron radius="0.12" position="5 0 0"  material="shader:flat; color:#00E5FF"></a-octahedron>
+    <a-octahedron radius="0.12" position="-5 0 0" material="shader:flat; color:#00E5FF"></a-octahedron>
+    <a-octahedron radius="0.12" position="0 0 5"  material="shader:flat; color:#00E5FF"></a-octahedron>
+    <a-octahedron radius="0.12" position="0 0 -5" material="shader:flat; color:#00E5FF"></a-octahedron>
+  </a-entity>
+
+  <!-- Anel orbital inclinado (violeta), sentido oposto -->
+  <a-entity position="0 3.8 0" rotation="12 0 -8">
+    <a-entity animation="property:rotation; to:0 -360 0; dur:120000; loop:true; easing:linear">
+      <a-torus radius="6.2" radius-tubular="0.01" segments-radial="4" segments-tubular="96"
+        rotation="90 0 0" material="shader:flat; color:#7C3AED; opacity:0.4; transparent:true"></a-torus>
+      <a-tetrahedron radius="0.16" position="6.2 0 0"    material="shader:flat; color:#7C3AED"></a-tetrahedron>
+      <a-tetrahedron radius="0.16" position="-3.1 0 5.37" material="shader:flat; color:#7C3AED"></a-tetrahedron>
+      <a-tetrahedron radius="0.16" position="-3.1 0 -5.37" material="shader:flat; color:#7C3AED"></a-tetrahedron>
+    </a-entity>
+  </a-entity>
+
+  <!-- Anel orbital inferior (verde) -->
+  <a-entity position="0 -0.9 0"
+    animation="property:rotation; to:0 360 0; dur:70000; loop:true; easing:linear">
+    <a-torus radius="4.2" radius-tubular="0.008" segments-radial="4" segments-tubular="96"
+      rotation="90 0 0" material="shader:flat; color:#00FF88; opacity:0.3; transparent:true"></a-torus>
+    <a-octahedron radius="0.08" position="4.2 0 0"     material="shader:flat; color:#00FF88"></a-octahedron>
+    <a-octahedron radius="0.08" position="-2.1 0 3.64"  material="shader:flat; color:#00FF88"></a-octahedron>
+    <a-octahedron radius="0.08" position="-2.1 0 -3.64" material="shader:flat; color:#00FF88"></a-octahedron>
+  </a-entity>
+
+  <!-- Painéis de dados ao redor (rotação Y do pai = ângulo em torno do visitante) -->
+  <a-entity rotation="0 68 0">
+    <a-entity position="0 1.7 -5" data-panel="title:SINAIS DO FUTURO · ONDAS CEREBRAIS; tag:CONCEITO; kind:wave; color:#00E5FF; interval:250"></a-entity>
+  </a-entity>
+  <a-entity rotation="0 115 0">
+    <a-entity position="0 1.7 -5" data-panel="title:GUIA RESPIRATÓRIO; kind:gauge; color:#00FF88; interval:200"></a-entity>
+  </a-entity>
+  <a-entity rotation="0 -68 0">
+    <a-entity position="0 1.7 -5" data-panel="title:ESPECTRO EMOCIONAL; kind:bars; color:#7C3AED; interval:500"></a-entity>
+  </a-entity>
+  <a-entity rotation="0 -115 0">
+    <a-entity position="0 1.7 -5" data-panel="title:STATUS DO SISTEMA; kind:status; color:#00E5FF; interval:500"></a-entity>
+  </a-entity>
+  <a-entity rotation="0 180 0">
+    <a-entity position="0 1.9 -5.5" data-panel="kind:logo; color:#7C3AED; width:3.2; interval:120"></a-entity>
+  </a-entity>
+
+  <!-- Estruturas geométricas grandes em wireframe, girando devagar -->
+  <a-icosahedron radius="1" detail="1" position="0 4.3 6.2"
+    material="shader:flat; color:#7C3AED; wireframe:true; opacity:0.35; transparent:true"
+    animation="property:rotation; to:360 360 0; dur:60000; loop:true; easing:linear"></a-icosahedron>
+  <a-dodecahedron radius="0.7" position="-6.2 4 0.3"
+    material="shader:flat; color:#00E5FF; wireframe:true; opacity:0.35; transparent:true"
+    animation="property:rotation; to:0 360 360; dur:50000; loop:true; easing:linear"></a-dodecahedron>
+  <a-dodecahedron radius="0.7" position="6.2 4 0.3"
+    material="shader:flat; color:#00FF88; wireframe:true; opacity:0.3; transparent:true"
+    animation="property:rotation; to:360 0 360; dur:55000; loop:true; easing:linear"></a-dodecahedron>
+
+  <!-- Câmera -->
+  <a-entity id="rig" position="0 0 0">
+    <a-camera position="0 1.6 0"
+      look-controls="enabled:true"
+      wasd-controls="enabled:false">
+    </a-camera>
+  </a-entity>
+
+</a-scene>
+
+<script>
+/* ════════════════════════════════════════════════════════════════
+   NEURO LAB — vr/lab.html  v2.2
+   Experiência em 4 fases, integrada com a sessão do visitante.
+
+   Uma única linha do tempo (TIMELINE) dispara, no mesmo instante,
+   a fala em MP3 e a mudança de textos/luzes. A esfera usa o mesmo
+   relógio (NL.startTime) no componente breath-controller, com os
+   ciclos em BREATH_CYCLES alinhados às falas 07–11.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── FASES (só para o indicador no canto e o painel de status) ─── */
+const PHASES = {
+  ENTRADA:    { start:  0, end: 16, label: 'IDENTIFICAÇÃO' },
+  RESULTADO:  { start: 16, end: 28, label: 'SEU ESTADO'    },
+  RESPIRACAO: { start: 28, end: 61, label: 'RESPIRAÇÃO'    },
+  REFLEXAO:   { start: 61, end: SESSION_DURATION, label: 'REFLEXÃO' },
+};
+
+/* ── NARRAÇÃO EM ÁUDIO ─────────────────────────────────────────── */
+const AUDIO_DIR        = 'audio/'; // relativo a vr/lab.html → vr/audio/
+const AUDIO_EXT        = '.mp3';
+const AUDIO_TOLERANCIA = 1.5;      // s de atraso aceitos; além disso a fala é pulada
+const AUDIO_GENERICA   = '04_emocao_generica';
+
+// Campo dominant da sessão → sufixo do arquivo 04_emocao_*
+const AUDIO_EMOCAO = {
+  happy:     'feliz',
+  neutral:   'tranquilo',
+  surprised: 'surpreso',
+  sad:       'triste',
+  angry:     'irritado',
+  fearful:   'apreensivo',
+  disgusted: 'incomodado',
+};
+
+/* ── LINHA DO TEMPO (segundos a partir do clique em ENTRAR) ──────
+   audio: nome do MP3 sem extensão, ou função que devolve uma lista
+          de candidatos (o primeiro disponível toca).
+   cena:  troca de textos/luzes, executada junto com o áudio.
+   INSPIRE/SEGURE/SOLTE e as cores da esfera vêm do breath-controller. */
+const TIMELINE = [
+  { t:  0,   audio: '01_boas_vindas',     cena: _cenaEntrada },
+  { t:  2.5, audio: '02_laboratorio'      },
+  { t: 10,   audio: '03_olhe_ao_redor',   cena: _cenaOlheAoRedor },
+  { t: 16,   audio: _audioEmocao,         cena: _cenaResultado },
+  { t: 21,   audio: '05_nao_diagnostico', cena: _cenaNaoDiagnostico },
+  { t: 28,   audio: '06_respirar',        cena: _cenaRespiracao },
+  { t: 33,   audio: '07_inspire'          }, // ciclo 1
+  { t: 37,   audio: '08_segure'           },
+  { t: 41,   audio: '09_solte_devagar'    },
+  { t: 47,   audio: '10_de_novo'          }, // ciclo 2
+  { t: 51,   audio: '08_segure'           },
+  { t: 55,   audio: '11_solte'            },
+  { t: 61,                                cena: _cenaReflexao },
+  { t: 62,   audio: '12_reflexao'         },
+  { t: 68,   audio: '13_tire_oculos'      },
+];
+
+/* BREATH_CYCLES, BREATH_LABELS, SESSION_DURATION e limites da esfera
+   estão no <head>, junto do componente breath-controller. */
+
+/* ── ESTADO ─────────────────────────────────────────────────────── */
+let _sessionStarted = false;
+let _sessionStart   = null;
+let _sessionData    = null; // dados vindos de /api/sessao/:id
+let _sessionId      = null; // UUID lido da URL
+let _timerInterval  = null;
+let _timelineLoop   = null;
+
+let _audioCtx    = null;        // AudioContext criado no clique em ENTRAR
+const _audios      = new Map(); // nome → Promise<AudioBuffer | null>
+const _audioFalhas = new Set(); // nomes que falharam (nova tentativa no clique)
+const _audioVivo   = new Set(); // fontes tocando agora (paradas no encerramento)
+
+/* ── REFS DOM ────────────────────────────────────────────────────── */
+const entryScreen   = document.getElementById('entry-screen');
+const endScreen     = document.getElementById('end-screen');
+const timerEl       = document.getElementById('session-timer');
+const phaseEl       = document.getElementById('phase-indicator');
+const sphere        = document.getElementById('breathSphere');
+const ring1         = document.getElementById('breathRing');
+const ring2         = document.getElementById('breathRing2');
+const breathLabel   = document.getElementById('breathLabel');
+const tL1           = document.getElementById('textLine1');
+const tL2           = document.getElementById('textLine2');
+const tL3           = document.getElementById('textLine3');
+const tL4           = document.getElementById('textLine4');
+const lightViolet   = document.getElementById('lightViolet');
+const lightGreen    = document.getElementById('lightGreen');
+
+/* ══════════════════════════════════════════════════════════════════
+   INICIALIZAÇÃO — lê UUID da URL e busca dados da sessão
+   ══════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  buildParticles();
+  buildEnvironment();
+
+  // Narração: prepara o áudio já na abertura (o clique em ENTRAR só desbloqueia)
+  if (_audioCriarContexto()) _audioPreCarregar();
+
+  // Mudanças de fase da respiração vêm do componente breath-controller
+  document.getElementById('vrScene').addEventListener('breathphase', e => {
+    const phase = e.detail.phase;
+    if (_sessionStarted) {
+      console.log(`[VR][esfera] ${_agora().toFixed(2)}s → ${BREATH_LABELS[phase] || 'REPOUSO'}`);
+    }
+    _updateBreathColors(phase);
+    _updateBreathLabel(phase === 'idle' ? '' : phase);
+    if (phase !== 'idle') _updateEnvironmentLight(phase);
+  });
+
+  // Ler UUID da query string (?id=UUID)
+  const params = new URLSearchParams(window.location.search);
+  _sessionId   = params.get('id') || null;
+  NL.sessionId = _sessionId;
+
+  // Sem ?id (caso normal no Quest): usa a sessão marcada pelo botão ENTRAR
+  _carregarSessao(_sessionId);
+});
+
+const _ENTRY_SUB_PADRAO = document.getElementById('entrySubText').innerHTML;
+
+/**
+ * Carrega /api/sessao/:id (se veio ?id) ou /api/sessao/ativa.
+ * Falha → experiência genérica (_sessionData = null).
+ */
+async function _carregarSessao(id) {
+  const rota = id ? `/api/sessao/${encodeURIComponent(id)}` : '/api/sessao/ativa';
+  try {
+    const resp = await fetch(rota, { cache: 'no-store' });
+    if (resp.status === 404) {
+      // Nenhuma sessão ativa / UUID inexistente → experiência genérica
+      _sessionData = null;
+      NL.emotions  = null;
+    } else {
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      if (!data.ok) throw new Error('Sessão inválida');
+      _sessionData = data;
+      NL.emotions  = data.emotions || null;
+    }
+  } catch (err) {
+    // Erro de rede/servidor: mantém o que já estava carregado
+    console.warn('[VR] Falha ao buscar sessão, mantendo estado atual:', err.message);
+  }
+  _atualizarTelaEntrada();
+  if (_sessionData) console.log('[VR] Sessão carregada:', _sessionData.id?.slice(0,8), '| dominant:', _sessionData.dominant);
+}
+
+function _atualizarTelaEntrada() {
+  const sub = document.getElementById('entrySubText');
+  const tag = document.getElementById('entrySession');
+  const emo = _sessionData?.emotions?.[0];
+  if (emo) {
+    // textContent no nome — o dado vem da rede, não injetar HTML
+    sub.innerHTML = 'Seu scan registrou: <strong></strong>.<br>Vamos explorar esse estado juntos.';
+    sub.querySelector('strong').textContent = emo.name;
+  } else {
+    sub.innerHTML = _ENTRY_SUB_PADRAO;
+  }
+  tag.textContent = _sessionData?.id ? `SESSÃO ${_sessionData.id.slice(0,8).toUpperCase()}` : '';
+}
+
+// Se a aba do Quest ficar aberta entre visitantes, mantém a tela de entrada
+// atualizada quando o operador clicar ENTRAR no PC.
+setInterval(() => {
+  if (!_sessionStarted && !_sessionId) _carregarSessao(null);
+}, 3000);
+
+/* ══════════════════════════════════════════════════════════════════
+   INÍCIO DA EXPERIÊNCIA
+   ══════════════════════════════════════════════════════════════ */
+async function startExperience() {
+  if (_sessionStarted) return;
+  _sessionStarted = true;
+
+  // O tempo zero da sessão é o clique. Desbloquear o áudio aqui, ainda
+  // dentro do gesto do usuário (antes de qualquer await): o Quest só
+  // libera som depois de um toque. _audioPreCarregar só busca o que a
+  // abertura da página não conseguiu carregar.
+  _sessionStart = Date.now();
+  NL.startTime  = _sessionStart;
+  NL.started    = true;
+  _audioDesbloquear();
+  _audioPreCarregar();
+
+  // Busca a sessão ativa uma última vez (o ENTRAR pode ter sido clicado
+  // depois do último polling). Não aguarda: enterVR() precisa do gesto
+  // do usuário ainda "fresco". Termina bem antes da fala 04 (16s),
+  // que é a primeira a usar _sessionData.
+  if (!_sessionId) _carregarSessao(null);
+
+  _startTimer();
+  _iniciarLinhaDoTempo();
+
+  // Esconder entrada
+  entryScreen.classList.add('hidden');
+  await sleep(700);
+  entryScreen.style.display = 'none';
+
+  // Mostrar overlays
+  timerEl.style.display   = 'block';
+  phaseEl.style.display   = 'block';
+
+  // Tentar entrar em VR (WebXR)
+  const scene = document.getElementById('vrScene');
+  if (navigator.xr) {
+    try { scene.enterVR(); }
+    catch (e) { console.log('[VR] Modo VR não disponível, continuando em 3D:', e.message); }
+  }
+}
+
+/** Segundos desde o clique em ENTRAR (relógio único da sessão). */
+function _agora() { return (Date.now() - _sessionStart) / 1000; }
+
+/* ══════════════════════════════════════════════════════════════════
+   LINHA DO TEMPO — dispara cena + áudio de cada item da TIMELINE
+   ══════════════════════════════════════════════════════════════ */
+function _iniciarLinhaDoTempo() {
+  let proximo = 0;
+  console.log('[VR] Linha do tempo iniciada (0.00s = clique em ENTRAR)');
+
+  const passo = () => {
+    if (!_sessionStarted) return;
+    const t = _agora();
+
+    // while: se o navegador atrasar o timer, dispara tudo que já venceu
+    while (proximo < TIMELINE.length && t >= TIMELINE[proximo].t) {
+      const item = TIMELINE[proximo++];
+      if (item.cena) {
+        console.log(`[VR][cena]  ${_agora().toFixed(2)}s → ${item.cena.name.replace('_cena', '')}`);
+        item.cena();
+      }
+      if (item.audio) {
+        _tocar(typeof item.audio === 'function' ? item.audio() : item.audio, item.t);
+      }
+    }
+
+    // Indicador de fase no canto e no painel de status
+    const fase = Object.values(PHASES).find(p => t >= p.start && t < p.end);
+    if (fase && NL.phaseLabel !== fase.label) {
+      phaseEl.textContent = fase.label;
+      NL.phaseLabel = fase.label;
+    }
+  };
+
+  passo(); // dispara o t=0 já no clique
+  _timelineLoop = setInterval(passo, 20);
+}
+
+/* ── ENTRADA (0–16s) ─────────────────────────────────────────── */
+function _cenaEntrada() {
+  _tela({
+    1: 'NEURO LAB',
+    2: ['LABORATÓRIO DE SAÚDE DO FUTURO', 0.12],
+    3: 'Sinais antes dos sintomas',
+  });
+  _updateBreathColors('idle');
+  _updateBreathLabel('');
+  _luzes(0.5, 0.2);
+}
+
+function _cenaOlheAoRedor() {
+  _tela({
+    2: 'OLHE AO REDOR',
+    3: 'Dados acompanhados em tempo real',
+  });
+  _luzes(0.9, 0.5); // a sala "acende" para o visitante explorar os painéis
+}
+
+/* ── RESULTADO (16–28s) ─────────────────────────────────────── */
+function _cenaResultado() {
+  const emocoes = _sessionData?.emotions || [];
+  // A emoção em destaque é a mesma que define a fala 04 (campo dominant)
+  const dominante = emocoes.find(e => e.key === _sessionData?.dominant) || emocoes[0];
+
+  if (!dominante) {
+    // Sem dados: experiência genérica
+    _tela({
+      1: 'SEU ESTADO AGORA',
+      3: 'Vamos usar o próximo momento para equilibrar sua energia.',
+    });
+  } else {
+    const secundarias = emocoes.filter(e => e !== dominante).slice(0, 2)
+      .map(e => `${e.name}  ${e.pct}%`)
+      .join('   ');
+    _tela({
+      1: 'SEU ESTADO AGORA',
+      2: `${String(dominante.name).toUpperCase()}  ${dominante.pct}%`,
+      3: secundarias,
+    });
+  }
+  _luzes(1.1, 0.2); // foco à frente, nos dados
+}
+
+function _cenaNaoDiagnostico() {
+  _setText(tL4, 'Não é diagnóstico · Nenhuma imagem gravada', 0);
+  _luzes(0.8, 0.3);
+}
+
+/* ── RESPIRAÇÃO (28–61s) ────────────────────────────────────── */
+function _cenaRespiracao() {
+  _tela({ 1: 'RESPIRAÇÃO GUIADA' });
+  _updateBreathColors('ready'); // a esfera "acorda" quando a voz a apresenta
+  _luzes(0.7, 0.2);
+  // De 33s a 61s, INSPIRE/SEGURE/SOLTE, cores e luz vêm do breath-controller
+}
+
+/* ── REFLEXÃO (61–74s) ──────────────────────────────────────── */
+function _cenaReflexao() {
+  _tela({
+    1: 'SESSÃO CONCLUÍDA',
+    3: 'Seu relatório te espera no QR code',
+  });
+  _updateBreathLabel('');
+  _luzes(0.5, 0.6);
+}
+
+function _luzes(violeta, verde) {
+  lightViolet.setAttribute('intensity', String(violeta));
+  lightGreen.setAttribute('intensity', String(verde));
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   NARRAÇÃO — MP3 em vr/audio/ tocados via Web Audio API
+   Um AudioContext desbloqueado no clique vale para todas as falas,
+   continua tocando dentro do WebXR e não depende de um toque por
+   arquivo (como <audio> exigiria no Quest).
+   ══════════════════════════════════════════════════════════════ */
+
+/**
+ * Cria o AudioContext (nasce "suspenso" se ainda não houve toque).
+ * Chamado já na abertura da página: a 1ª criação inicializa o dispositivo
+ * de áudio e pode levar ~0,7s — feito no clique, atrasaria o início da sessão.
+ */
+function _audioCriarContexto() {
+  if (_audioCtx) return true;
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx) { console.warn('[VR][áudio] Web Audio indisponível — sessão seguirá sem narração'); return false; }
+  try {
+    _audioCtx = new Ctx();
+    return true;
+  } catch (e) {
+    console.warn('[VR][áudio] Falha ao criar o AudioContext:', e.message);
+    return false;
+  }
+}
+
+/** Chamar dentro do clique em ENTRAR: libera o som (Quest exige um toque). */
+function _audioDesbloquear() {
+  if (!_audioCriarContexto()) return;
+  try {
+    _audioCtx.resume().catch(() => {});
+    const mudo = _audioCtx.createBufferSource(); // 1 amostra muda consolida o desbloqueio
+    mudo.buffer = _audioCtx.createBuffer(1, 1, 22050);
+    mudo.connect(_audioCtx.destination);
+    mudo.start(0);
+    console.log('[VR][áudio] Áudio desbloqueado pelo clique em ENTRAR');
+  } catch (e) {
+    console.warn('[VR][áudio] Falha ao desbloquear o áudio — sessão seguirá sem narração:', e.message);
+    _audioCtx = null;
+  }
+}
+
+/**
+ * Baixa e decodifica todas as falas em paralelo (inclui as 8 variações da 04).
+ * Roda na abertura da página e de novo no clique, quando só busca o que
+ * ainda não foi buscado ou falhou (ex.: servidor fora do ar na abertura).
+ */
+function _audioPreCarregar() {
+  if (!_audioCtx) return;
+  const nomes = new Set(TIMELINE.filter(i => i.audio).flatMap(_audioNomesPossiveis));
+  const novos = [...nomes].filter(nome => !_audios.has(nome) || _audioFalhas.has(nome));
+  if (!novos.length) return;
+  novos.forEach(nome => { _audioFalhas.delete(nome); _audios.set(nome, _audioCarregar(nome)); });
+  Promise.all([..._audios.values()]).then(_audioRelatorio);
+}
+
+/** Nunca rejeita: resolve com o AudioBuffer ou null (arquivo ausente/corrompido). */
+async function _audioCarregar(nome) {
+  try {
+    const resp = await fetch(AUDIO_DIR + nome + AUDIO_EXT);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const dados = await resp.arrayBuffer();
+    return await _audioCtx.decodeAudioData(dados);
+  } catch (e) {
+    console.warn(`[VR][áudio] ${nome}${AUDIO_EXT} indisponível (${e.message || e}) — essa fala ficará em silêncio`);
+    _audioFalhas.add(nome);
+    return null;
+  }
+}
+
+/** Resumo do pré-carregamento + aviso de falas mais longas que o intervalo até a próxima. */
+async function _audioRelatorio() {
+  const linhas = {};
+  for (const [nome, p] of _audios) {
+    const buf = await p;
+    linhas[nome + AUDIO_EXT] = {
+      status: buf ? 'ok' : 'FALTANDO',
+      'duração (s)': buf ? +buf.duration.toFixed(2) : '—',
+      'voz até (s)': buf ? +_audioFimDaVoz(buf).toFixed(2) : '—',
+    };
+  }
+  const prontos = Object.values(linhas).filter(l => l.status === 'ok').length;
+  console.log(`[VR][áudio] Pré-carregamento concluído: ${prontos}/${_audios.size} arquivos prontos`);
+  console.table(linhas);
+
+  const comAudio = TIMELINE.filter(i => i.audio);
+  for (let i = 0; i < comAudio.length; i++) {
+    const item  = comAudio[i];
+    const fim   = i + 1 < comAudio.length ? comAudio[i + 1].t : SESSION_DURATION;
+    for (const nome of _audioNomesPossiveis(item)) {
+      const buf = await _audios.get(nome);
+      const voz = buf && _audioFimDaVoz(buf);
+      if (buf && voz > fim - item.t) {
+        console.warn(`[VR][áudio] ${nome}${AUDIO_EXT}: a voz vai até ${voz.toFixed(2)}s, mas a próxima fala começa ${(fim - item.t).toFixed(1)}s depois — vai sobrepor`);
+      }
+    }
+  }
+}
+
+/** Instante (s) em que a voz termina: ignora o silêncio que o TTS deixa no fim do arquivo. */
+function _audioFimDaVoz(buf) {
+  const d = buf.getChannelData(0);
+  let i = d.length - 1;
+  while (i > 0 && Math.abs(d[i]) < 0.01) i--;
+  return i / buf.sampleRate;
+}
+
+/** Todos os arquivos que um item da TIMELINE pode tocar (a fala 04 tem 8 variações). */
+function _audioNomesPossiveis(item) {
+  return item.audio === _audioEmocao
+    ? [...Object.values(AUDIO_EMOCAO).map(s => `04_emocao_${s}`), AUDIO_GENERICA]
+    : [item.audio];
+}
+
+/** Fala 04: arquivo da emoção dominante da sessão, com a genérica como reserva. */
+function _audioEmocao() {
+  const sufixo = AUDIO_EMOCAO[_sessionData?.dominant];
+  return sufixo ? [`04_emocao_${sufixo}`, AUDIO_GENERICA] : [AUDIO_GENERICA];
+}
+
+/**
+ * Toca o primeiro candidato disponível. Se nenhum carregar, segue em
+ * silêncio; se o arquivo chegar com mais de AUDIO_TOLERANCIA de atraso,
+ * a fala é pulada para não ficar fora de sincronia com a cena.
+ */
+async function _tocar(candidatos, previsto) {
+  candidatos = [].concat(candidatos);
+  if (!_audioCtx) {
+    console.log(`[VR][áudio] ${_agora().toFixed(2)}s · silêncio (${candidatos[0]}${AUDIO_EXT} — áudio não desbloqueado)`);
+    return;
+  }
+  for (const nome of candidatos) {
+    const buffer = await (_audios.get(nome) || null);
+    if (!_sessionStarted) return;
+    if (!buffer) continue;
+
+    const atraso = _agora() - previsto;
+    if (atraso > AUDIO_TOLERANCIA) {
+      console.warn(`[VR][áudio] ${_agora().toFixed(2)}s · ${nome}${AUDIO_EXT} pulado (chegou ${atraso.toFixed(2)}s atrasado)`);
+      return;
+    }
+    try {
+      if (_audioCtx.state !== 'running') _audioCtx.resume().catch(() => {});
+      const fonte = _audioCtx.createBufferSource();
+      fonte.buffer = buffer;
+      fonte.connect(_audioCtx.destination);
+      fonte.onended = () => _audioVivo.delete(fonte);
+      fonte.start(0);
+      _audioVivo.add(fonte);
+      console.log(`[VR][áudio] ${_agora().toFixed(2)}s ▶ ${nome}${AUDIO_EXT}  (previsto ${previsto.toFixed(1)}s · duração ${buffer.duration.toFixed(2)}s)`);
+    } catch (e) {
+      console.warn(`[VR][áudio] Falha ao tocar ${nome}${AUDIO_EXT}:`, e.message);
+    }
+    return;
+  }
+  console.log(`[VR][áudio] ${_agora().toFixed(2)}s · silêncio (${candidatos.map(n => n + AUDIO_EXT).join(' / ')} indisponível)`);
+}
+
+function _audioParar() {
+  _audioVivo.forEach(f => { try { f.stop(); } catch { /* já terminou */ } });
+  _audioVivo.clear();
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   TIMER
+   ══════════════════════════════════════════════════════════════ */
+function _startTimer() {
+  _timerInterval = setInterval(() => {
+    const elapsed   = Math.floor(_agora());
+    const remaining = Math.max(0, SESSION_DURATION - elapsed);
+    timerEl.textContent = nlMMSS(remaining);
+    if (remaining <= 0) { clearInterval(_timerInterval); _endSession(); }
+  }, 100);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   RESPIRAÇÃO — cores, label e luz (a animação de tamanho fica no
+   componente breath-controller, que roda no tick do A-Frame)
+   ══════════════════════════════════════════════════════════════ */
+function _updateBreathColors(phase) {
+  const c = {
+    inhale: { s:'#00E5FF', r1:'#00E5FF', r2:'#7C3AED', ei:0.6 },
+    hold:   { s:'#7C3AED', r1:'#7C3AED', r2:'#00E5FF', ei:0.5 },
+    exhale: { s:'#00FF88', r1:'#00FF88', r2:'#7C3AED', ei:0.4 },
+    idle:   { s:'#00E5FF', r1:'#00E5FF', r2:'#7C3AED', ei:0.3 },
+    ready:  { s:'#00E5FF', r1:'#00E5FF', r2:'#7C3AED', ei:0.8 }, // 28–33s: esfera apresentada
+  }[phase] || { s:'#00E5FF', r1:'#00E5FF', r2:'#7C3AED', ei:0.3 };
+
+  sphere.setAttribute('material',
+    `color:${c.s};opacity:0.22;transparent:true;emissive:${c.s};emissiveIntensity:${c.ei};side:double`);
+  ring1.setAttribute('material',
+    `color:${c.r1};opacity:0.55;transparent:true;emissive:${c.r1};emissiveIntensity:0.8`);
+  ring2.setAttribute('material',
+    `color:${c.r2};opacity:0.28;transparent:true;emissive:${c.r2};emissiveIntensity:0.6`);
+}
+
+function _updateBreathLabel(phase) {
+  const label = BREATH_LABELS[phase] || '';
+  breathLabel.setAttribute('canvas-text', { value: label, opacity: label ? 0.95 : 0 });
+}
+
+function _updateEnvironmentLight(phase) {
+  // Luz reage sutilmente à fase de respiração
+  const intensities = { inhale:'1.1', hold:'0.9', exhale:'0.6', idle:'0.7' };
+  lightViolet.setAttribute('intensity', intensities[phase] || '0.7');
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   ENCERRAMENTO
+   ══════════════════════════════════════════════════════════════ */
+function _endSession() {
+  _sessionStarted = false;
+  NL.started      = false;
+  clearInterval(_timelineLoop);
+  _audioParar();
+  console.log(`[VR] ${_agora().toFixed(2)}s · fim da sessão — tela de encerramento`);
+
+  const scene = document.getElementById('vrScene');
+  if (scene.is('vr-mode')) scene.exitVR();
+
+  timerEl.style.display = 'none';
+  phaseEl.style.display = 'none';
+  endScreen.classList.add('visible');
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   PARTÍCULAS — distribuídas em 360°, fora da área dos textos
+   ══════════════════════════════════════════════════════════════ */
+function buildParticles() {
+  const container = document.getElementById('particles');
+  const count = 28; // conservador para Quest 3S
+
+  for (let i = 0; i < count; i++) {
+    const el    = document.createElement('a-sphere');
+    const ang   = Math.random() * Math.PI * 2;
+    const dist  = 3.6 + Math.random() * 4;
+    const x     = Math.sin(ang) * dist;
+    const y     = Math.random() * 4 - .5;
+    const z     = -Math.cos(ang) * dist;
+    const r     = 0.012 + Math.random() * 0.022;
+    const color = Math.random() > .5 ? '#00E5FF' : '#7C3AED';
+    const dur   = 3000 + Math.random() * 4000;
+    const delay = Math.random() * 3000;
+
+    el.setAttribute('position',  `${x.toFixed(2)} ${y.toFixed(2)} ${z.toFixed(2)}`);
+    el.setAttribute('radius',    r.toFixed(3));
+    el.setAttribute('segments-width',  '8');
+    el.setAttribute('segments-height', '6');
+    el.setAttribute('material',  `shader:flat;color:${color};opacity:0.6;transparent:true`);
+    el.setAttribute('animation', `property:position;to:${x.toFixed(2)} ${(y+.4+Math.random()*.3).toFixed(2)} ${z.toFixed(2)};dur:${dur};delay:${delay};dir:alternate;loop:true;easing:easeInOutSine`);
+
+    container.appendChild(el);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   AMBIENTE — pilares de luz em círculo ao redor do visitante
+   ══════════════════════════════════════════════════════════════ */
+function buildEnvironment() {
+  const container = document.getElementById('pillars');
+  const COLORS = ['#00E5FF', '#7C3AED', '#00FF88', '#7C3AED'];
+
+  for (let i = 0; i < 8; i++) {
+    const a   = (22.5 + i * 45) * Math.PI / 180;
+    const x   = (Math.sin(a) * 7).toFixed(2);
+    const z   = (-Math.cos(a) * 7).toFixed(2);
+    const col = COLORS[i % COLORS.length];
+
+    const beam = document.createElement('a-cylinder');
+    beam.setAttribute('position', `${x} 1.4 ${z}`);
+    beam.setAttribute('radius', '0.025');
+    beam.setAttribute('height', '6');
+    beam.setAttribute('segments-radial', '6');
+    beam.setAttribute('open-ended', 'true');
+    beam.setAttribute('material', `shader:flat;color:${col};opacity:0.45;transparent:true`);
+    container.appendChild(beam);
+
+    const cap = document.createElement('a-octahedron');
+    cap.setAttribute('position', `${x} 4.6 ${z}`);
+    cap.setAttribute('radius', '0.16');
+    cap.setAttribute('material', `shader:flat;color:${col};opacity:0.85;transparent:true`);
+    cap.setAttribute('animation',
+      `property:rotation;to:0 360 0;dur:${8000 + i * 700};loop:true;easing:linear`);
+    container.appendChild(cap);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   HELPERS DE TEXTO 3D (componente canvas-text)
+   ══════════════════════════════════════════════════════════════ */
+
+function _fade(el, to, dur, easing) {
+  // Remover antes garante que a animação reinicia mesmo com os mesmos parâmetros
+  el.removeAttribute('animation__fade');
+  el.setAttribute('animation__fade',
+    { property: 'canvas-text.opacity', to, dur, easing });
+}
+
+/** Fade in com delay. size (opcional) sobrepõe o tamanho de fonte da linha só nessa troca. */
+function _setText(el, value, delayS, size) {
+  setTimeout(() => {
+    el._nlSeq = (el._nlSeq || 0) + 1;
+    if (el._nlBaseSize === undefined) el._nlBaseSize = el.getAttribute('canvas-text').size;
+    el.setAttribute('canvas-text', { value, opacity: 0, size: size || el._nlBaseSize });
+    _fade(el, 1, 450, 'easeOutQuad');
+  }, delayS * 1000);
+}
+
+/**
+ * Troca a tela inteira de uma vez: { 1: texto, 2: [texto, tamanho], ... }.
+ * Linhas omitidas são apagadas.
+ */
+function _tela(linhas) {
+  [tL1, tL2, tL3, tL4].forEach((el, i) => {
+    const l = linhas[i + 1];
+    if (!l) return _clearText(el, 0);
+    const [value, size] = Array.isArray(l) ? l : [l];
+    _setText(el, value, 0, size);
+  });
+}
+
+/** Fade out */
+function _clearText(el, delayS) {
+  setTimeout(() => {
+    const seq = el._nlSeq = (el._nlSeq || 0) + 1;
+    _fade(el, 0, 400, 'easeOutQuad');
+    // Só apaga o valor se nenhum _setText aconteceu nesse meio tempo
+    setTimeout(() => {
+      if (el._nlSeq === seq) el.setAttribute('canvas-text', 'value', '');
+    }, 420);
+  }, delayS * 1000);
+}
+
+/* ── UTILITÁRIOS ────────────────────────────────────────────────── */
+function sleep(ms)         { return new Promise(r => setTimeout(r, ms)); }
+</script>
+</body>
+</html>

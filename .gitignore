@@ -1,0 +1,27 @@
+# ── Segredos e configuração local ─────────────────────────────
+# O .env guarda configurações da máquina (e, se usada, a chave de API).
+.env
+.env.*
+
+# ── Dados de visitantes e de sessões ──────────────────────────
+# Resultados dos scans da feira (sessions.json, backups e o estado do VR).
+data/
+**/data/
+
+# ── Dependências e programas de terceiros ─────────────────────
+# node_modules é recriado com "npm install"; tools/ tem adb e cloudflared
+# (executáveis grandes, baixados dos sites oficiais).
+node_modules/
+versao-feira/tools/
+
+# ── Anotações internas de planejamento ────────────────────────
+versao-feira/Contexto/
+
+# ── Logs, sistema operacional e editor ────────────────────────
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/

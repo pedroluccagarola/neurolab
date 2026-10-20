@@ -1,0 +1,66 @@
+{
+  "_aviso": "Fallback offline do NEURO LAB. Usado quando a API da Anthropic não está disponível. Mesmo tom do HUD e da narração: fala de sinais na expressão (nunca afirma o que a pessoa sente), sem termos técnicos, dicas práticas para hoje.",
+
+  "happy": {
+    "abertura": "Durante o scan, sua expressão mostrou sinais de alegria. Que bom começar a experiência assim.",
+    "dicas": [
+      "Anote uma coisa boa que aconteceu hoje. Leva menos de um minuto e ajuda a lembrar dela depois.",
+      "Compartilhe o bom momento com alguém: mande uma mensagem ou conte pessoalmente.",
+      "Se tem algo que você vem adiando, que tal dar o primeiro passo ainda hoje?"
+    ]
+  },
+
+  "neutral": {
+    "abertura": "Durante o scan, sua expressão mostrou sinais de tranquilidade. Um bom ponto de partida para o resto do dia.",
+    "dicas": [
+      "Se tiver algo importante para resolver, um momento tranquilo é uma boa hora para pensar com calma.",
+      "Faça uma pausa de 5 minutos longe da tela — um pouco de ar ou de luz natural faz bem.",
+      "Beba um copo de água agora. Parece simples, mas faz diferença ao longo do dia."
+    ]
+  },
+
+  "surprised": {
+    "abertura": "Durante o scan, sua expressão mostrou sinais de surpresa. Um ótimo jeito de começar algo novo.",
+    "dicas": [
+      "Experimente algo diferente hoje: um tema novo, uma conversa ou outro caminho na volta para casa.",
+      "Faça uma pergunta sobre algo que sempre pareceu óbvio. A curiosidade cresce quando a gente usa.",
+      "Anote o que mais chamou sua atenção aqui na feira. Rever isso depois pode render boas ideias."
+    ]
+  },
+
+  "sad": {
+    "abertura": "O resultado sugere um momento de reflexão. Uma pausa com calma pode fazer bem hoje.",
+    "dicas": [
+      "Respire devagar: inspire por 4 segundos, segure por 4 e solte por 6. Repita três vezes.",
+      "Mexa o corpo um pouco: uma caminhada curta ou um alongamento de 2 minutos já fazem bem.",
+      "Converse com alguém de confiança, nem que seja para trocar algumas palavras."
+    ]
+  },
+
+  "angry": {
+    "abertura": "Durante o scan, sua expressão mostrou sinais de tensão. Uma pausa curta pode cair bem agora.",
+    "dicas": [
+      "Antes de uma decisão importante, espere alguns minutos e respire fundo algumas vezes.",
+      "Movimente-se: alguns minutos de caminhada ou alongamento ajudam a soltar os ombros e o corpo.",
+      "Se algo estiver te incomodando, tente descrever em uma frase. Colocar em palavras ajuda a ver com mais calma."
+    ]
+  },
+
+  "fearful": {
+    "abertura": "O resultado sugere sinais de apreensão. Respirar devagar pode ser um bom próximo passo.",
+    "dicas": [
+      "Olhe ao redor e diga mentalmente 5 coisas que você consegue ver. Isso traz a atenção para o agora.",
+      "Solte o ar bem devagar, como se fosse apagar uma vela de longe. Repita algumas vezes.",
+      "Se algo estiver te preocupando, escreva em uma frase. Ver no papel ajuda a pensar com mais clareza."
+    ]
+  },
+
+  "disgusted": {
+    "abertura": "Durante o scan, sua expressão mostrou sinais de desconforto. O resultado sugere que uma pequena pausa pode cair bem.",
+    "dicas": [
+      "Se puder, mude de lugar por alguns minutos — um pouco de ar fresco ajuda a recomeçar.",
+      "Beba um copo de água e solte os ombros. Pequenas pausas fazem diferença.",
+      "Faça algo simples de que você gosta: ouvir uma música, comer algo gostoso ou conversar com alguém."
+    ]
+  }
+}

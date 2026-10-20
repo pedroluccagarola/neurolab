@@ -1,0 +1,20 @@
+# Dependências Node.js
+node_modules/
+
+# Variáveis de ambiente — NUNCA commitar este arquivo
+.env
+
+# Dados de sessões gerados em tempo de execução (Sessão 2+)
+data/sessions.json
+
+# Logs
+*.log
+npm-debug.log*
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/

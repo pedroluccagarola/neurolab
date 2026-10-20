@@ -1,0 +1,4 @@
+# GitHub Pages: a pasta da feira fica no repositório (código-fonte), mas não
+# é publicada no site — ela precisa do servidor Node.js para funcionar.
+exclude:
+  - versao-feira
