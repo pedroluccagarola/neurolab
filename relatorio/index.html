@@ -543,6 +543,126 @@ body {
 
 [hidden] { display: none !important; }
 
+/* ═══ AUTOAVALIAÇÃO ANTES → DEPOIS ═════════════════════════════ */
+.mood-card {
+  background: var(--bg2);
+  border: 0.5px solid rgba(0, 229, 255, 0.3);
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 28px;
+}
+
+.mood-compare {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.mood-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 6px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 0.5px solid rgba(255, 255, 255, 0.08);
+}
+
+.mood-box.antes  { border-color: rgba(124, 58, 237, 0.5); }
+.mood-box.depois { border-color: rgba(0, 229, 255, 0.5); }
+
+.mood-when {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.mood-val {
+  font-family: var(--font-mono);
+  font-size: 34px;
+  font-weight: bold;
+  line-height: 1.1;
+}
+
+.mood-box.antes  .mood-val { color: #A78BFA; }
+.mood-box.depois .mood-val { color: var(--cyan); text-shadow: 0 0 14px rgba(0, 229, 255, 0.4); }
+
+.mood-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--offwhite);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
+.mood-delta {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: bold;
+  min-width: 46px;
+  padding: 6px 8px;
+  border-radius: 14px;
+  text-align: center;
+  color: var(--muted);
+  border: 0.5px solid rgba(255, 255, 255, 0.15);
+}
+
+.mood-delta.sobe  { color: var(--green);  border-color: rgba(0, 255, 136, 0.45);  background: rgba(0, 255, 136, 0.06); }
+.mood-delta.igual { color: var(--cyan);   border-color: rgba(0, 229, 255, 0.45);  background: rgba(0, 229, 255, 0.06); }
+.mood-delta.desce { color: #A78BFA;       border-color: rgba(124, 58, 237, 0.5);  background: rgba(124, 58, 237, 0.08); }
+
+/* régua 1–5 com as duas respostas marcadas */
+.mood-scale {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.mood-step {
+  position: relative;
+  height: 26px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mood-step.antes  { box-shadow: inset 0 0 0 1.5px #7C3AED; color: #C4B5FD; }
+.mood-step.depois { background: rgba(0, 229, 255, 0.85); color: var(--bg); font-weight: bold;
+                    box-shadow: 0 0 10px rgba(0, 229, 255, 0.5); }
+.mood-step.antes.depois { box-shadow: inset 0 0 0 2px #7C3AED, 0 0 10px rgba(0, 229, 255, 0.5); }
+
+.mood-legend {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+
+.mood-text {
+  font-size: 14px;
+  color: var(--offwhite);
+  line-height: 1.6;
+}
+
+.mood-note {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 8px;
+}
+
 /* largura confortável no computador (no celular ocupa a tela toda) */
 .top-bar ~ * { max-width: 640px; margin-left: auto; margin-right: auto; }
 </style>
@@ -613,6 +733,34 @@ body {
   <div class="ai-block">
     <div class="ai-block-label">NEURO LAB ›</div>
     <p class="ai-block-text" id="abertura"></p>
+  </div>
+
+  <!-- AUTOAVALIAÇÃO ANTES → DEPOIS -->
+  <div id="secaoAutoavaliacao" hidden>
+    <div class="section-hdr">
+      <span class="section-hdr-label">◈ Como você se sentiu</span>
+      <div class="section-hdr-line"></div>
+    </div>
+
+    <div class="mood-card">
+      <div class="mood-compare">
+        <div class="mood-box antes">
+          <span class="mood-when">Antes do scan</span>
+          <span class="mood-val" id="moodAntes">—</span>
+          <span class="mood-name" id="moodAntesNome">sem resposta</span>
+        </div>
+        <div class="mood-delta" id="moodDelta">→</div>
+        <div class="mood-box depois">
+          <span class="mood-when">Depois do VR</span>
+          <span class="mood-val" id="moodDepois">—</span>
+          <span class="mood-name" id="moodDepoisNome">sem resposta</span>
+        </div>
+      </div>
+      <div class="mood-scale" id="moodScale"></div>
+      <div class="mood-legend"><span>1 · Muito mal</span><span>5 · Muito bem</span></div>
+      <p class="mood-text" id="moodTexto"></p>
+      <p class="mood-note">É a sua própria resposta, não uma medição.</p>
+    </div>
   </div>
 
   <!-- DICAS PERSONALIZADAS -->
@@ -739,6 +887,31 @@ body {
     lista.appendChild(row);
   });
   if (!lista.children.length) lista.style.marginBottom = '28px';
+
+  // Autoavaliação: antes (a) e depois (d), de 1 a 5
+  const comp = NL_DADOS.comparar(r.antes, r.depois);
+  if (comp) {
+    document.getElementById('secaoAutoavaliacao').hidden = false;
+    const preencher = (id, v) => {
+      document.getElementById(id).textContent = v ?? '—';
+      document.getElementById(id + 'Nome').textContent = v ? NL_DADOS.ESCALA[v] : 'sem resposta';
+    };
+    preencher('moodAntes', r.antes);
+    preencher('moodDepois', r.depois);
+    const delta = document.getElementById('moodDelta');
+    if (comp.diff !== null) {
+      delta.textContent = comp.diff > 0 ? '+' + comp.diff : comp.diff < 0 ? '−' + (-comp.diff) : '0';
+      delta.classList.add(comp.diff > 0 ? 'sobe' : comp.diff < 0 ? 'desce' : 'igual');
+    }
+    const escala = document.getElementById('moodScale');
+    for (let n = 1; n <= 5; n++) {
+      const passo = document.createElement('div');
+      passo.className = 'mood-step' + (n === r.antes ? ' antes' : '') + (n === r.depois ? ' depois' : '');
+      passo.textContent = n;
+      escala.appendChild(passo);
+    }
+    document.getElementById('moodTexto').textContent = comp.texto;
+  }
 
   const dicas = document.getElementById('dicasList');
   conteudo.dicas.forEach((dica, i) => {

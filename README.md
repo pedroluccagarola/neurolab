@@ -29,7 +29,7 @@ Na feira, o projeto funcionou com um servidor Node.js no notebook e com o Meta Q
 ## Como usar
 
 1. Abra o link da demonstração.
-2. Escolha uma das opções:
+2. Escolha uma das opções. Antes de começar, a página pergunta **"Como você se sente agora?"** (escala de 1 a 5); a resposta é opcional.
    - **Iniciar scan emocional:** o navegador pede permissão para usar a câmera. Posicione o rosto na área indicada e aguarde a contagem. A câmera é desligada logo após a captura.
    - **Pular scan:** para quem não quer ou não pode usar a câmera. Basta escolher uma emoção para seguir a demonstração.
 3. No painel de resultado:
@@ -39,9 +39,10 @@ Na feira, o projeto funcionou com um servidor Node.js no notebook e com o Meta Q
    - **Computador:** arraste com o mouse para olhar ao redor.
    - **Celular:** gire o aparelho ou arraste com o dedo.
    - **Meta Quest:** abra o link no navegador do Quest; a sessão entra em VR imersivo.
-5. Ao final, a tela de encerramento leva ao relatório.
+5. Ao final, a mesma pergunta é feita de novo e a tela de encerramento leva ao relatório.
+6. O relatório mostra a autoavaliação de antes e de depois, com a diferença entre elas.
 
-O resultado fica apenas no endereço (URL) do relatório e do VR, por exemplo `relatorio/?e=happy:72,neutral:20,surprised:5`. Nenhum dado é gravado em servidor.
+O resultado fica apenas no endereço (URL) do relatório e do VR, por exemplo `relatorio/?e=happy:72,neutral:20,surprised:5&a=3&d=4` (`a` e `d` são as respostas de antes e de depois). Nenhum dado é gravado em servidor.
 
 ## Tecnologias utilizadas
 
@@ -126,7 +127,7 @@ O código foi escrito com o **Claude** como principal ferramenta de desenvolvime
 
 - O vídeo da webcam é analisado pelo face-api.js no próprio navegador. Nenhum quadro é gravado, exportado ou enviado pela rede.
 - A câmera só é ligada ao clicar em **Iniciar scan emocional** e é desligada logo após a captura.
-- O resultado (apenas as porcentagens) fica no endereço do relatório; não há banco de dados nem servidor na demonstração.
+- O resultado (as porcentagens e, se a pessoa responder, a autoavaliação de 1 a 5) fica no endereço do relatório; não há banco de dados nem servidor na demonstração.
 - Os dados das sessões da feira não fazem parte deste repositório.
 
 ## Aviso

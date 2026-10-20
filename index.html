@@ -403,6 +403,22 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
   font-family:var(--font-hud);font-size:9px;letter-spacing:.2em;text-transform:uppercase}
 .choice-cancel:hover{color:var(--offwhite)}
 
+/* ── AUTOAVALIAÇÃO 1–5 (antes do scan) ─────────────────────────── */
+.mood-panel{border-color:rgba(0,229,255,.4)}
+.mood-panel .choice-title{color:var(--cyan)}
+.mood-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.mood-btn{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+  gap:5px;padding:10px 2px 9px;cursor:pointer;
+  border:1px solid rgba(0,229,255,.28);background:rgba(0,229,255,.05);color:var(--white);
+  transition:background .2s,border-color .2s,box-shadow .2s}
+.mood-btn:hover,.mood-btn:focus-visible{background:rgba(0,229,255,.14);
+  border-color:var(--cyan);box-shadow:0 0 12px rgba(0,229,255,.3);outline:none}
+.mood-num{font-family:var(--font-hud);font-size:clamp(18px,3.8vw,24px);color:var(--cyan);line-height:1}
+.mood-lbl{font-family:var(--font-ui);font-weight:600;font-size:clamp(9px,1.7vw,11px);
+  letter-spacing:.04em;text-transform:uppercase;color:var(--offwhite);line-height:1.15;text-align:center}
+.mood-actions{display:flex;justify-content:space-between;gap:8px;margin-top:8px}
+.mood-actions .choice-cancel{width:auto;margin-top:0}
+
 /* ── BASE: AVISO + RODAPÉ ─────────────────────────────────────────
    Empilhados num só bloco (aviso em cima, rodapé embaixo) para nunca
    se sobreporem. O padding deixa o texto dentro das cantoneiras
@@ -827,6 +843,18 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
    <button class="choice-cancel" onclick="fecharEscolha()">✕ Voltar</button>
   </div>
 
+  <!-- AUTOAVALIAÇÃO ANTES DO SCAN -->
+  <div class="choice-panel mood-panel" id="moodPanel" role="dialog" aria-labelledby="moodTitle">
+   <div class="result-top-bar"></div>
+   <div class="choice-title" id="moodTitle">◈ Antes de começar</div>
+   <div class="choice-sub">Como você se sente agora? Responda de 1 a 5. Vamos perguntar de novo no fim do VR para comparar.</div>
+   <div class="mood-grid" id="moodGrid"><!-- botões criados em initMood() --></div>
+   <div class="mood-actions">
+    <button class="choice-cancel" onclick="fecharAutoavaliacao()">✕ Voltar</button>
+    <button class="choice-cancel" id="moodSkip" onclick="responderAntes(null)">Prefiro não responder ›</button>
+   </div>
+  </div>
+
   <!-- RESULT PANEL -->
   <div class="result-panel" id="resultPanel">
    <div class="result-top-bar"></div>
@@ -883,7 +911,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
     <button class="vr-btn" onclick="abrirVR()" id="vrBtn">ENTRAR</button>
    </div>
 
-   <button class="result-reset" id="resetBtn" onclick="resetScan()">
+   <button class="result-reset" id="resetBtn" onclick="recomecar()">
     ↺  RECOMEÇAR
    </button>
   </div>
@@ -1278,6 +1306,7 @@ function initClock(){
    e sem nenhum botão na tela. */
 async function startScan(){
   if(scanActive) return;
+  if(_antes === undefined) return perguntarAntes(startScan); /* autoavaliação primeiro */
   scanActive = true;
   SFX.click();   /* acknowledge the button press immediately */
 
@@ -1557,7 +1586,7 @@ function prepararRelatorio(result){
   const qrBlock  = document.getElementById('qrBlock');
   const qrCanvas = document.getElementById('qrCanvas');
 
-  _resultadoQS = NL_DADOS.codificar(result);
+  _resultadoQS = NL_DADOS.codificar({ ...result, antes: _antes });
   const relatorioUrl = new URL('relatorio/?' + _resultadoQS, window.location.href).href;
   document.getElementById('reportBtn').href = relatorioUrl;
 
@@ -1589,6 +1618,59 @@ function abrirVR() {
 }
 
 /* ─────────────────────────────────────────────────────────────
+   AUTOAVALIAÇÃO — "Como você se sente agora?" (1 a 5)
+   Perguntada uma vez por rodada, antes do scan ou do pular scan.
+   A resposta só vai no link (&a=3); o fim do VR pergunta de novo (&d=).
+   _antes: undefined = ainda não perguntado · null = preferiu não responder
+   ───────────────────────────────────────────────────────────── */
+let _antes;
+let _depoisDaAutoavaliacao = null; // startScan ou pularScan
+
+function initMood(){
+  const grid = document.getElementById('moodGrid');
+  Object.entries(NL_DADOS.ESCALA).forEach(([n, rotulo]) => {
+    const b = document.createElement('button');
+    b.className = 'mood-btn';
+    b.setAttribute('aria-label', `${n} — ${rotulo}`);
+    b.innerHTML = '<span class="mood-num"></span><span class="mood-lbl"></span>';
+    b.querySelector('.mood-num').textContent = n;
+    b.querySelector('.mood-lbl').textContent = rotulo;
+    b.onclick = () => responderAntes(Number(n));
+    grid.appendChild(b);
+  });
+}
+
+function perguntarAntes(seguir){
+  SFX.click();
+  avisar('');
+  _depoisDaAutoavaliacao = seguir;
+  document.getElementById('scanBtnWrap').classList.add('hidden');
+  document.getElementById('promptZone').classList.add('hidden');
+  document.getElementById('moodPanel').classList.add('visible');
+  setTimeout(() => document.querySelector('.mood-btn')?.focus({ preventScroll:true }), 300);
+}
+
+function fecharAutoavaliacao(){
+  document.getElementById('moodPanel').classList.remove('visible');
+  document.getElementById('scanBtnWrap').classList.remove('hidden');
+  document.getElementById('promptZone').classList.remove('hidden');
+}
+
+function responderAntes(valor){
+  _antes = NL_DADOS.nivel(valor); // número de 1 a 5 ou null
+  fecharAutoavaliacao();
+  const seguir = _depoisDaAutoavaliacao;
+  _depoisDaAutoavaliacao = null;
+  if (seguir) seguir();
+}
+
+/** RECOMEÇAR: nova rodada, a autoavaliação será perguntada de novo. */
+function recomecar(){
+  _antes = undefined;
+  resetScan();
+}
+
+/* ─────────────────────────────────────────────────────────────
    PULAR SCAN — escolher uma emoção sem câmera
    ───────────────────────────────────────────────────────────── */
 function initChoice(){
@@ -1605,6 +1687,7 @@ function initChoice(){
 
 function pularScan(){
   if(scanActive) return;
+  if(_antes === undefined) return perguntarAntes(pularScan); /* autoavaliação primeiro */
   SFX.click();
   abrirEscolha('Sem câmera: escolha uma emoção para seguir a demonstração.');
 }
@@ -1735,6 +1818,7 @@ function resetScan(){
   _resultadoQS = ''; // limpar resultado anterior
   NLScan.fecharCamera(); /* safety — a câmera nunca fica ligada fora do scan */
   document.getElementById('choicePanel').classList.remove('visible');
+  document.getElementById('moodPanel').classList.remove('visible');
   stopComputing(); /* safety — in case reset is called mid-scan */
 
   const frame = document.getElementById('hudFrame');
@@ -1864,6 +1948,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   IdleRotator.start();
   initSparklines();
   initChoice();
+  initMood();
   runBoot();
 });
 </script>

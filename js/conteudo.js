@@ -12,6 +12,8 @@
        e = até 3 emoções (chave:porcentagem), a primeira é a principal
        m = 1 quando a emoção foi escolhida no "pular scan"
        t = data/hora do scan (ms)
+       a = autoavaliação antes do scan (1 a 5, opcional)
+       d = autoavaliação depois do VR (1 a 5, opcional)
    Nada é gravado em servidor: quem tem o link vê só esses números.
    ═══════════════════════════════════════════════════════════════════ */
 
@@ -111,13 +113,53 @@ const NL_DADOS = (() => {
     },
   };
 
+  /* ── AUTOAVALIAÇÃO ("Como você se sente agora?") ───────────────
+     Resposta da própria pessoa, de 1 a 5, antes do scan (a) e depois
+     do VR (d). Opcional: quem prefere não responder fica sem o campo. */
+  const ESCALA = {
+    1: 'Muito mal',
+    2: 'Mal',
+    3: 'Mais ou menos',
+    4: 'Bem',
+    5: 'Muito bem',
+  };
+
+  /** Só aceita os inteiros 1 a 5; qualquer outra coisa vira null. */
+  function nivel(v) {
+    return /^[1-5]$/.test(String(v ?? '')) ? Number(v) : null;
+  }
+
+  /**
+   * Texto da comparação antes → depois. Fala só da resposta da pessoa:
+   * não afirma que o VR causou a mudança.
+   */
+  function comparar(antes, depois) {
+    if (antes === null && depois === null) return null;
+    if (depois === null) {
+      return { diff: null, texto: 'Faça o laboratório VR e responda de novo no final para comparar.' };
+    }
+    if (antes === null) {
+      return { diff: null, texto: 'Você não respondeu antes do scan, então não há comparação desta vez.' };
+    }
+    const diff = depois - antes;
+    const pontos = n => n === 1 ? '1 ponto' : `${n} pontos`;
+    let texto;
+    if (diff > 0)      texto = `Sua autoavaliação subiu ${pontos(diff)} depois da respiração guiada.`;
+    else if (diff < 0) texto = `Sua autoavaliação ficou ${pontos(-diff)} abaixo de antes. Tudo bem: cada momento é diferente, e uma pausa curta nem sempre muda como a gente se sente.`;
+    else               texto = 'Sua autoavaliação ficou igual antes e depois da experiência.';
+    return { diff, texto };
+  }
+
   /** Resultado → texto da query string (sem o "?"). */
-  function codificar({ emotions, manual, timestamp }) {
+  function codificar({ emotions, manual, timestamp, antes, depois }) {
     const e = emotions.slice(0, 3)
       .map(x => `${x.key}:${Math.round(x.pct)}`)
       .join(',');
     const t = timestamp instanceof Date ? timestamp.getTime() : Date.now();
-    return `e=${e}&m=${manual ? 1 : 0}&t=${t}`;
+    let qs = `e=${e}&m=${manual ? 1 : 0}&t=${t}`;
+    if (nivel(antes))  qs += `&a=${antes}`;
+    if (nivel(depois)) qs += `&d=${depois}`;
+    return qs;
   }
 
   /**
@@ -145,8 +187,11 @@ const NL_DADOS = (() => {
       dominant:  emotions[0].key,
       manual:    p.get('m') === '1',
       timestamp: Number.isFinite(t) && t > 0 ? new Date(t) : null,
+      antes:     nivel(p.get('a')),
+      depois:    nivel(p.get('d')),
     };
   }
 
-  return { EMOCOES, COMENTARIOS, COMENTARIOS_MANUAL, RELATORIO, codificar, decodificar };
+  return { EMOCOES, COMENTARIOS, COMENTARIOS_MANUAL, RELATORIO, ESCALA,
+           nivel, comparar, codificar, decodificar };
 })();
