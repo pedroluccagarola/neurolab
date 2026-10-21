@@ -17,704 +17,128 @@
 <script src="../js/conteudo.js"></script>
 <script src="../js/explicacao.js"></script>
 <style>
-/* ═══ RESET ════════════════════════════════════════════════════ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* ═══ TOKENS ═══════════════════════════════════════════════════ */
 :root {
-  --bg:         #080D1A;
-  --bg2:        #0D1B35;
-  --bg3:        #111F3A;
-  --cyan:       #00E5FF;
-  --cyan-dim:   #0097A7;
-  --violet:     #7C3AED;
-  --green:      #00FF88;
-  --green-dim:  #00695C;
-  --amber:      #FFB800;
-  --white:      #FFFFFF;
-  --offwhite:   #CBD5E1;
-  --muted:      #64748B;
-  --font-mono:  'Courier New', Courier, monospace;
-  --font-sans:  -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --bg:        #080D1A;
+  --bg2:       #0D1B35;
+  --cyan:      #00E5FF;
+  --violet:    #7C3AED;
+  --green:     #00FF88;
+  --amber:     #FFB800;
+  --white:     #FFFFFF;
+  --offwhite:  #CBD5E1;
+  --soft:      #94A3B8;   /* texto secundário que precisa ser lido (7,5:1) */
+  --muted:     #64748B;   /* só enfeite */
+  --font-mono: 'Courier New', Courier, monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
-/* ═══ BASE ══════════════════════════════════════════════════════ */
-html {
-  background: var(--bg);
-  min-height: 100%;
-}
-
+html { background: var(--bg); min-height: 100%; }
 body {
-  background: var(--bg);
-  color: var(--white);
-  font-family: var(--font-sans);
-  font-size: 15px;
-  line-height: 1.6;
-  min-height: 100vh;
-  padding: 0 0 48px;
-  /* prevent horizontal scroll on mobile */
-  overflow-x: hidden;
+  background: var(--bg); color: var(--white);
+  font-family: var(--font-sans); font-size: 15px; line-height: 1.6;
+  min-height: 100vh; padding: 0 0 32px; overflow-x: hidden;
 }
 
-/* ═══ TOP BAR ═══════════════════════════════════════════════════ */
-.top-bar {
-  width: 100%;
-  height: 3px;
-  background: linear-gradient(90deg, var(--cyan), var(--violet), var(--green));
-}
+.top-bar { width: 100%; height: 3px; background: linear-gradient(90deg, var(--cyan), var(--violet), var(--green)); }
 
-/* ═══ HEADER ════════════════════════════════════════════════════ */
-.header {
-  padding: 24px 20px 20px;
-  border-bottom: 0.5px solid rgba(0, 229, 255, 0.15);
-}
+/* ═══ CABEÇALHO ═══ */
+.header { padding: 22px 20px 16px; }
+.header-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.logo-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 10px var(--cyan);
+  animation: pulse-dot 2.4s ease-in-out infinite; }
+.logo-name { font-family: var(--font-mono); font-size: 14px; letter-spacing: .3em; color: var(--cyan); text-transform: uppercase; }
+.header-sub { font-size: 13px; color: var(--soft); padding-left: 18px; }
 
-.header-logo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 4px;
-}
+.main { padding: 0 20px; }
 
-.logo-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--cyan);
-  box-shadow: 0 0 10px var(--cyan);
-  animation: pulse-dot 2.4s ease-in-out infinite;
-}
+/* rótulo de seção: mono, maiúsculas, um pouco maior e menos espaçado que antes */
+.section-hdr { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.section-hdr-line { flex: 1; height: 0.5px; background: rgba(0, 229, 255, .18); }
+.section-hdr-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: .14em; color: var(--cyan);
+  text-transform: uppercase; white-space: nowrap; }
 
-.logo-name {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  letter-spacing: 0.3em;
-  color: var(--cyan);
-  text-transform: uppercase;
-}
+/* ═══ 1. AUTOAVALIAÇÃO ═══ */
+.mood-card { background: var(--bg2); border: .5px solid rgba(0, 229, 255, .3); border-radius: 12px;
+  padding: 16px; margin-bottom: 22px; position: relative; overflow: hidden; }
+.mood-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--violet), var(--cyan)); }
+.mood-compare { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; margin-bottom: 12px; }
+.mood-box { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 6px; border-radius: 8px;
+  background: rgba(255, 255, 255, .03); border: .5px solid rgba(255, 255, 255, .08); }
+.mood-box.antes  { border-color: rgba(124, 58, 237, .5); }
+.mood-box.depois { border-color: rgba(0, 229, 255, .5); }
+.mood-when { font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; color: var(--soft); text-transform: uppercase; }
+.mood-val { font-family: var(--font-mono); font-size: 32px; font-weight: bold; line-height: 1.1; }
+.mood-box.antes  .mood-val { color: #A78BFA; }
+.mood-box.depois .mood-val { color: var(--cyan); text-shadow: 0 0 14px rgba(0, 229, 255, .4); }
+.mood-name { font-size: 13px; font-weight: 600; color: var(--offwhite); text-align: center; }
+.mood-delta { font-family: var(--font-mono); font-size: 16px; font-weight: bold; min-width: 46px; padding: 6px 8px;
+  border-radius: 14px; text-align: center; color: var(--soft); border: .5px solid rgba(255, 255, 255, .15); }
+.mood-delta.sobe  { color: var(--green); border-color: rgba(0, 255, 136, .45); background: rgba(0, 255, 136, .06); }
+.mood-delta.igual { color: var(--cyan);  border-color: rgba(0, 229, 255, .45); background: rgba(0, 229, 255, .06); }
+.mood-delta.desce { color: #A78BFA;      border-color: rgba(124, 58, 237, .5); background: rgba(124, 58, 237, .08); }
+.mood-text { font-size: 15px; color: var(--white); line-height: 1.55; }
+.mood-note { font-size: 13px; color: var(--soft); margin-top: 6px; }
 
-.header-sub {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.15em;
-  color: var(--muted);
-  text-transform: uppercase;
-  padding-left: 18px;
-}
+/* ═══ 2. EXPRESSÃO EM DESTAQUE (uma linha) ═══ */
+.destaque { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; padding: 12px 16px;
+  background: var(--bg2); border: .5px solid rgba(0, 229, 255, .2); border-radius: 10px; margin-bottom: 22px; }
+.destaque-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; color: var(--soft); text-transform: uppercase; }
+.destaque-valor { font-size: 18px; font-weight: 700; color: var(--cyan); }
+.destaque-valor small { font-family: var(--font-mono); font-size: 15px; font-weight: bold; margin-left: 4px; }
+.calib-note { flex-basis: 100%; font-size: 13px; color: var(--soft); text-decoration: none; }
+.calib-note span { color: var(--cyan); text-decoration: underline; text-underline-offset: 2px; }
 
-/* ═══ MAIN WRAPPER ══════════════════════════════════════════════ */
-.main {
-  padding: 0 20px;
-}
+/* ═══ 3. UMA DICA ═══ */
+.dica-card { padding: 14px 16px; background: var(--bg2); border: .5px solid rgba(0, 255, 136, .22); border-radius: 10px;
+  position: relative; overflow: hidden; margin-bottom: 22px; font-size: 15px; color: var(--white); line-height: 1.6; }
+.apoio { margin-top: 10px; padding-top: 10px; border-top: .5px solid rgba(255, 255, 255, .08);
+  font-size: 13px; color: var(--soft); line-height: 1.55; }
+.dica-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--green); }
 
-/* ═══ SESSION META ══════════════════════════════════════════════ */
-.session-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 0 18px;
-  border-bottom: 0.5px solid rgba(0, 229, 255, 0.1);
-  margin-bottom: 12px;
-}
+/* ═══ AÇÕES ═══ */
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+.action-btn { flex: 1 1 140px; padding: 12px 14px; border: 1px solid rgba(0, 229, 255, .4); border-radius: 8px;
+  background: rgba(0, 229, 255, .08); color: var(--cyan); font-family: var(--font-mono); font-size: 12px;
+  letter-spacing: .06em; text-transform: uppercase; text-align: center; text-decoration: none; }
+.action-btn.alt { border-color: rgba(0, 255, 136, .35); background: rgba(0, 255, 136, .06); color: var(--green); }
 
-/* Aviso discreto: na demo o resultado existe só no link */
-.link-note {
-  font-size: 11px;
-  color: var(--muted);
-  line-height: 1.5;
-  margin-bottom: 24px;
-}
+/* ═══ SAIBA MAIS (um só bloco, fechado) ═══ */
+.saiba { background: var(--bg2); border: .5px solid rgba(0, 229, 255, .3); border-radius: 12px; margin-bottom: 22px; overflow: hidden; }
+.saiba > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+  gap: 10px; padding: 14px 16px; }
+.saiba > summary::-webkit-details-marker { display: none; }
+.saiba > summary::after { content: '＋'; font-size: 16px; color: var(--cyan); }
+.saiba[open] > summary::after { content: '－'; }
+.saiba[open] > summary { border-bottom: .5px solid rgba(0, 229, 255, .15); }
+.saiba-titulo { font-family: var(--font-mono); font-size: 12px; letter-spacing: .14em; color: var(--cyan); text-transform: uppercase; }
+.saiba-sub { display: block; font-family: var(--font-sans); font-size: 13px; letter-spacing: 0; text-transform: none; color: var(--soft); margin-top: 3px; }
+.saiba-corpo { padding: 4px 16px 18px; }
+.saiba-sec { padding-top: 16px; }
+.saiba-sec + .saiba-sec { margin-top: 16px; border-top: .5px solid rgba(255, 255, 255, .08); }
+.saiba-h { font-family: var(--font-mono); font-size: 11px; letter-spacing: .14em; color: var(--cyan); text-transform: uppercase; margin-bottom: 10px; }
+.saiba-p { font-size: 14px; color: var(--offwhite); line-height: 1.65; }
+.saiba-p + .saiba-p { margin-top: 8px; }
+.saiba-p strong { color: var(--white); font-weight: 600; }
+.saiba-corpo .xp { --xp-mono: var(--font-mono); --xp-sans: var(--font-sans); --xp-h-size: 11px; --xp-p-size: 14px; }
 
-.session-meta-item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
+/* ═══ RODAPÉ: aviso em uma linha ═══ */
+.aviso { font-size: 13px; color: var(--soft); text-align: center; padding: 14px 20px 0; border-top: .5px solid rgba(0, 229, 255, .1); }
+.aviso b { color: var(--amber); font-weight: 600; }
+.footer-line { font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; color: var(--muted);
+  text-transform: uppercase; text-align: center; margin-top: 10px; }
 
-.session-meta-item:last-child {
-  text-align: right;
-}
-
-.meta-label {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.14em;
-  color: var(--muted);
-  text-transform: uppercase;
-}
-
-.meta-value {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--offwhite);
-  letter-spacing: 0.06em;
-}
-
-/* ═══ SECTION HEADER ════════════════════════════════════════════ */
-.section-hdr {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-
-.section-hdr-line {
-  flex: 1;
-  height: 0.5px;
-  background: rgba(0, 229, 255, 0.18);
-}
-
-.section-hdr-label {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.2em;
-  color: var(--cyan);
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-/* ═══ DOMINANT EMOTION CARD ═════════════════════════════════════ */
-.dominant-card {
-  background: var(--bg2);
-  border: 0.5px solid rgba(0, 229, 255, 0.3);
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 12px;
-  position: relative;
-  overflow: hidden;
-}
-
-/* top accent bar */
-.dominant-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, var(--cyan), var(--violet));
-}
-
-.dominant-label {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.18em;
-  color: var(--muted);
-  text-transform: uppercase;
-  margin-bottom: 6px;
-}
-
-.dominant-name {
-  font-size: 32px;
-  font-weight: 700;
-  color: var(--cyan);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  line-height: 1;
-  margin-bottom: 12px;
-  text-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
-}
-
-.dominant-pct-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.dominant-pct {
-  font-family: var(--font-mono);
-  font-size: 22px;
-  font-weight: bold;
-  color: var(--cyan);
-  min-width: 52px;
-}
-
-.dominant-bar-track {
-  flex: 1;
-  height: 6px;
-  background: rgba(0, 229, 255, 0.1);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.dominant-bar-fill {
-  height: 100%;
-  border-radius: 3px;
-  background: linear-gradient(90deg, var(--cyan-dim), var(--cyan));
-  box-shadow: 0 0 8px var(--cyan);
-  /* width set by script */
-}
-
-/* ═══ EMOTION ROWS (secondary) ══════════════════════════════════ */
-.emotions-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 28px;
-}
-
-.emotion-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  background: var(--bg2);
-  border: 0.5px solid rgba(255, 255, 255, 0.06);
-  border-radius: 8px;
-}
-
-.emotion-row-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--offwhite);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  min-width: 30%;
-}
-
-.emotion-row-track {
-  flex: 1;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.07);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.emotion-row-fill {
-  height: 100%;
-  border-radius: 2px;
-  /* color and width set by script */
-}
-
-.emotion-row-pct {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--offwhite);
-  min-width: 38px;
-  text-align: right;
-}
-
-/* ═══ AI COMMENT BLOCK ══════════════════════════════════════════ */
-.ai-block {
-  background: var(--bg2);
-  border: 0.5px solid rgba(124, 58, 237, 0.35);
-  border-radius: 12px;
-  padding: 18px;
-  margin-bottom: 28px;
-  position: relative;
-}
-
-.ai-block-label {
-  position: absolute;
-  top: -9px; left: 14px;
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.14em;
-  color: var(--violet);
-  background: var(--bg);
-  padding: 0 6px;
-  text-transform: uppercase;
-}
-
-.ai-block-text {
-  font-size: 14px;
-  color: var(--offwhite);
-  line-height: 1.7;
-  font-style: italic;
-}
-
-/* ═══ DICAS ══════════════════════════════════════════════════════ */
-.dicas-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 32px;
-}
-
-.dica-card {
-  display: flex;
-  gap: 14px;
-  padding: 14px 16px;
-  background: var(--bg2);
-  border: 0.5px solid rgba(0, 255, 136, 0.18);
-  border-radius: 10px;
-  position: relative;
-  overflow: hidden;
-}
-
-/* left accent */
-.dica-card::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 2px;
-  background: var(--green);
-}
-
-.dica-num {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--green);
-  font-weight: bold;
-  min-width: 20px;
-  padding-top: 1px;
-}
-
-.dica-text {
-  font-size: 14px;
-  color: var(--offwhite);
-  line-height: 1.6;
-  flex: 1;
-}
-
-/* ═══ SCIENCE NOTE ══════════════════════════════════════════════ */
-.science-note {
-  background: var(--bg3);
-  border-radius: 10px;
-  padding: 14px 16px;
-  margin-bottom: 28px;
-}
-
-.science-note-title {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.16em;
-  color: var(--amber);
-  text-transform: uppercase;
-  margin-bottom: 8px;
-}
-
-.science-note-text {
-  font-size: 12px;
-  color: var(--muted);
-  line-height: 1.65;
-}
-
-/* ═══ DISCLAIMER ════════════════════════════════════════════════ */
-.disclaimer {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 12px 14px;
-  border: 0.5px solid rgba(255, 184, 0, 0.2);
-  border-radius: 8px;
-  margin-bottom: 28px;
-}
-
-.disclaimer-icon {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 1px solid var(--amber);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  color: var(--amber);
-  font-family: var(--font-mono);
-  font-weight: bold;
-  flex-shrink: 0;
-  margin-top: 1px;
-}
-
-.disclaimer-text {
-  font-size: 11px;
-  color: rgba(255, 184, 0, 0.6);
-  line-height: 1.55;
-}
-
-/* ═══ VISÃO DE FUTURO ═══════════════════════════════════════════ */
-/* Discreta de propósito: sem fundo, só um fio violeta à esquerda,
-   texto menor e esmaecido — não compete com o resultado emocional. */
-.future-note {
-  padding: 2px 0 2px 14px;
-  border-left: 1px solid rgba(124, 58, 237, 0.45);
-  margin-bottom: 28px;
-}
-
-.future-note-title {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.16em;
-  color: rgba(124, 58, 237, 0.85);
-  text-transform: uppercase;
-  margin-bottom: 8px;
-}
-
-.future-note-text {
-  font-size: 12px;
-  color: var(--muted);
-  line-height: 1.65;
-}
-
-.future-note-text + .future-note-text {
-  margin-top: 8px;
-}
-
-.future-note-text strong {
-  color: var(--offwhite);
-  font-weight: 500;
-}
-
-/* ═══ FOOTER ════════════════════════════════════════════════════ */
-.footer {
-  padding: 20px 20px 0;
-  border-top: 0.5px solid rgba(0, 229, 255, 0.1);
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-}
-
-.footer-col {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.footer-line {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.1em;
-  color: var(--muted);
-  text-transform: uppercase;
-}
-
-.footer-line span {
-  color: var(--cyan);
-}
-
-/* ═══ ANIMATIONS ════════════════════════════════════════════════ */
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%       { opacity: 0.4; transform: scale(1.2); }
-}
-
-/* ═══ MOBILE FINE-TUNE ══════════════════════════════════════════ */
-@media (max-width: 380px) {
-  .dominant-name  { font-size: 26px; }
-  .dominant-pct   { font-size: 18px; }
-  body            { font-size: 14px; }
-}
-
-/* ═══ AÇÕES (demo) ═════════════════════════════════════════════ */
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 28px;
-}
-
-.action-btn {
-  flex: 1 1 140px;
-  padding: 12px 14px;
-  border: 1px solid rgba(0, 229, 255, 0.4);
-  border-radius: 8px;
-  background: rgba(0, 229, 255, 0.08);
-  color: var(--cyan);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  text-align: center;
-  text-decoration: none;
-}
-
-.action-btn.alt {
-  border-color: rgba(0, 255, 136, 0.35);
-  background: rgba(0, 255, 136, 0.06);
-  color: var(--green);
-}
-
-/* sem resultado na URL */
-.empty-card {
-  background: var(--bg2);
-  border: 0.5px solid rgba(0, 229, 255, 0.3);
-  border-radius: 12px;
-  padding: 24px 20px;
-  margin: 8px 0 28px;
-  text-align: center;
-}
-
-.empty-card p {
-  font-size: 14px;
-  color: var(--offwhite);
-  line-height: 1.6;
-  margin-bottom: 16px;
-}
-
+.empty-card { background: var(--bg2); border: .5px solid rgba(0, 229, 255, .3); border-radius: 12px; padding: 24px 20px;
+  margin: 8px 0 28px; text-align: center; }
+.empty-card p { font-size: 15px; color: var(--offwhite); margin-bottom: 16px; }
 .empty-card .action-btn { display: inline-block; }
 
 [hidden] { display: none !important; }
 
-/* ═══ "EM DESTAQUE PELA CALIBRAÇÃO" (cartão principal) ═════════ */
-.calib-note {
-  display: inline-block;
-  margin-top: 12px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--muted);
-  text-decoration: none;
-}
+@keyframes pulse-dot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .4; transform: scale(1.2); } }
 
-.calib-note span {
-  color: var(--cyan);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-/* ═══ COMO A IA CHEGOU NISSO (abre e fecha) ════════════════════ */
-.explica {
-  background: var(--bg2);
-  border: 0.5px solid rgba(0, 229, 255, 0.3);
-  border-radius: 12px;
-  margin: -14px 0 28px;
-  overflow: hidden;
-}
-
-.explica > summary {
-  list-style: none;
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 16px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  color: var(--cyan);
-  text-transform: uppercase;
-}
-
-.explica > summary::-webkit-details-marker { display: none; }
-.explica > summary::after { content: '＋'; font-size: 14px; }
-.explica[open] > summary::after { content: '－'; }
-.explica[open] > summary { border-bottom: 0.5px solid rgba(0, 229, 255, 0.15); }
-
-.explica-corpo { padding: 16px; }
-.explica-corpo .xp { --xp-mono: var(--font-mono); --xp-sans: var(--font-sans); --xp-h-size: 9px; --xp-p-size: 13px; }
-
-/* ═══ AUTOAVALIAÇÃO ANTES → DEPOIS ═════════════════════════════ */
-.mood-card {
-  background: var(--bg2);
-  border: 0.5px solid rgba(0, 229, 255, 0.3);
-  border-radius: 12px;
-  padding: 18px;
-  margin-bottom: 28px;
-}
-
-.mood-compare {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
-.mood-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 12px 6px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 0.5px solid rgba(255, 255, 255, 0.08);
-}
-
-.mood-box.antes  { border-color: rgba(124, 58, 237, 0.5); }
-.mood-box.depois { border-color: rgba(0, 229, 255, 0.5); }
-
-.mood-when {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.14em;
-  color: var(--muted);
-  text-transform: uppercase;
-}
-
-.mood-val {
-  font-family: var(--font-mono);
-  font-size: 34px;
-  font-weight: bold;
-  line-height: 1.1;
-}
-
-.mood-box.antes  .mood-val { color: #A78BFA; }
-.mood-box.depois .mood-val { color: var(--cyan); text-shadow: 0 0 14px rgba(0, 229, 255, 0.4); }
-
-.mood-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--offwhite);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  text-align: center;
-}
-
-.mood-delta {
-  font-family: var(--font-mono);
-  font-size: 15px;
-  font-weight: bold;
-  min-width: 46px;
-  padding: 6px 8px;
-  border-radius: 14px;
-  text-align: center;
-  color: var(--muted);
-  border: 0.5px solid rgba(255, 255, 255, 0.15);
-}
-
-.mood-delta.sobe  { color: var(--green);  border-color: rgba(0, 255, 136, 0.45);  background: rgba(0, 255, 136, 0.06); }
-.mood-delta.igual { color: var(--cyan);   border-color: rgba(0, 229, 255, 0.45);  background: rgba(0, 229, 255, 0.06); }
-.mood-delta.desce { color: #A78BFA;       border-color: rgba(124, 58, 237, 0.5);  background: rgba(124, 58, 237, 0.08); }
-
-/* régua 1–5 com as duas respostas marcadas */
-.mood-scale {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 4px;
-  margin-bottom: 6px;
-}
-
-.mood-step {
-  position: relative;
-  height: 26px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.05);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.mood-step.antes  { box-shadow: inset 0 0 0 1.5px #7C3AED; color: #C4B5FD; }
-.mood-step.depois { background: rgba(0, 229, 255, 0.85); color: var(--bg); font-weight: bold;
-                    box-shadow: 0 0 10px rgba(0, 229, 255, 0.5); }
-.mood-step.antes.depois { box-shadow: inset 0 0 0 2px #7C3AED, 0 0 10px rgba(0, 229, 255, 0.5); }
-
-.mood-legend {
-  display: flex;
-  justify-content: space-between;
-  font-size: 10px;
-  color: var(--muted);
-  margin-bottom: 14px;
-}
-
-.mood-text {
-  font-size: 14px;
-  color: var(--offwhite);
-  line-height: 1.6;
-}
-
-.mood-note {
-  font-size: 11px;
-  color: var(--muted);
-  margin-top: 8px;
-}
-
-/* largura confortável no computador (no celular ocupa a tela toda) */
 .top-bar ~ * { max-width: 640px; margin-left: auto; margin-right: auto; }
 </style>
 </head>
@@ -722,32 +146,16 @@ body {
 
 <div class="top-bar"></div>
 
-<!-- HEADER -->
 <header class="header">
   <div class="header-logo">
     <div class="logo-dot"></div>
     <span class="logo-name">NEURO LAB</span>
   </div>
-  <div class="header-sub">Relatório de Saúde Digital · Expotec 2026</div>
+  <div class="header-sub" id="headerSub">Seu relatório · versão demo</div>
 </header>
 
 <main class="main">
 
-  <!-- META DA SESSÃO -->
-  <div class="session-meta">
-    <div class="session-meta-item">
-      <span class="meta-label">Sessão</span>
-      <span class="meta-value">DEMO</span>
-    </div>
-    <div class="session-meta-item">
-      <span class="meta-label">Data / hora</span>
-      <span class="meta-value" id="metaData">—</span>
-    </div>
-  </div>
-
-  <p class="link-note">Versão de demonstração: o resultado fica só neste link e nada foi enviado a um servidor. Salve o link ou tire um print para guardar.</p>
-
-  <!-- SEM RESULTADO NA URL -->
   <div class="empty-card" id="semResultado" hidden>
     <p>Nenhum resultado neste link. Faça o scan (ou escolha uma emoção) na página inicial para gerar o seu relatório.</p>
     <a class="action-btn" href="../">◂ Ir para o início</a>
@@ -755,81 +163,48 @@ body {
 
   <div id="comResultado">
 
-  <!-- EMOÇÃO DOMINANTE -->
-  <div class="section-hdr">
-    <span class="section-hdr-label" id="tituloEstado">◈ Expressão predominante</span>
-    <div class="section-hdr-line"></div>
-  </div>
-
-  <div class="dominant-card">
-    <div class="dominant-label" id="dominantLabel">Expressão principal</div>
-    <div class="dominant-name" id="dominantName">—</div>
-    <div class="dominant-pct-row">
-      <span class="dominant-pct" id="dominantPct">—</span>
-      <div class="dominant-bar-track">
-        <div class="dominant-bar-fill" id="dominantBar" style="width: 0%"></div>
-      </div>
-    </div>
-    <a class="calib-note" id="calibNote" href="#explica" hidden>Em destaque pela calibração · <span>ver explicação</span></a>
-  </div>
-
-  <!-- EMOÇÕES SECUNDÁRIAS -->
-  <div class="emotions-list" id="emotionsList"></div>
-
-  <!-- COMO A IA CHEGOU NISSO -->
-  <details class="explica" id="explica">
-    <summary>◈ Como a IA chegou nisso</summary>
-    <div class="explica-corpo" id="explicaCorpo"></div>
-  </details>
-
-  <!-- COMENTÁRIO -->
-  <div class="section-hdr">
-    <span class="section-hdr-label">◈ Análise do seu resultado</span>
-    <div class="section-hdr-line"></div>
-  </div>
-
-  <div class="ai-block">
-    <div class="ai-block-label">NEURO LAB ›</div>
-    <p class="ai-block-text" id="abertura"></p>
-  </div>
-
-  <!-- AUTOAVALIAÇÃO ANTES → DEPOIS -->
-  <div id="secaoAutoavaliacao" hidden>
+  <!-- 1. COMO VOCÊ SE SENTIU (antes → depois) -->
+  <section id="secaoAutoavaliacao" hidden>
     <div class="section-hdr">
       <span class="section-hdr-label">◈ Como você se sentiu</span>
       <div class="section-hdr-line"></div>
     </div>
-
     <div class="mood-card">
       <div class="mood-compare">
         <div class="mood-box antes">
-          <span class="mood-when">Antes do scan</span>
+          <span class="mood-when">Antes</span>
           <span class="mood-val" id="moodAntes">—</span>
           <span class="mood-name" id="moodAntesNome">sem resposta</span>
         </div>
         <div class="mood-delta" id="moodDelta">→</div>
         <div class="mood-box depois">
-          <span class="mood-when">Depois do VR</span>
+          <span class="mood-when">Depois</span>
           <span class="mood-val" id="moodDepois">—</span>
           <span class="mood-name" id="moodDepoisNome">sem resposta</span>
         </div>
       </div>
-      <div class="mood-scale" id="moodScale"></div>
-      <div class="mood-legend"><span>1 · Muito mal</span><span>5 · Muito bem</span></div>
       <p class="mood-text" id="moodTexto"></p>
-      <p class="mood-note">É a sua própria resposta, não uma medição.</p>
+      <p class="mood-note">Sua própria resposta, de 1 (muito mal) a 5 (muito bem). Não é uma medição.</p>
     </div>
+  </section>
+
+  <!-- 2. EXPRESSÃO EM DESTAQUE -->
+  <div class="destaque">
+    <span class="destaque-label" id="destaqueLabel">Expressão em destaque</span>
+    <span class="destaque-valor" id="destaqueValor"></span>
+    <a class="calib-note" id="calibNote" href="#saiba" hidden>Em destaque pela calibração · <span>ver explicação</span></a>
   </div>
 
-  <!-- DICAS PERSONALIZADAS -->
+  <!-- 3. UMA DICA -->
   <div class="section-hdr">
-    <span class="section-hdr-label">◈ Dicas para o seu resultado</span>
+    <span class="section-hdr-label">◈ Uma dica para agora</span>
     <div class="section-hdr-line"></div>
   </div>
+  <div class="dica-card">
+    <p id="dica"></p>
+    <p class="apoio" id="apoio" hidden></p>
+  </div>
 
-  <div class="dicas-list" id="dicasList"></div>
-
-  <!-- PRÓXIMOS PASSOS (demo) -->
   <div class="actions">
     <a class="action-btn alt" id="btnVR" href="../vr/lab.html">◎ Laboratório VR</a>
     <a class="action-btn" href="../">↺ Novo scan</a>
@@ -837,170 +212,119 @@ body {
 
   </div><!-- /comResultado -->
 
-  <!-- NOTA CIENTÍFICA -->
-  <div class="science-note">
-    <div class="science-note-title">⊕ Como funciona o NEURO LAB</div>
-    <p class="science-note-text">
-      O scan usa visão computacional e se baseia nas pesquisas de Paul Ekman sobre
-      expressões faciais. A câmera analisa o rosto e estima o quanto cada uma de
-      7 expressões aparece naquele momento, o que não é o mesmo que saber o que a
-      pessoa sente. O VR usa uma técnica de respiração guiada (inspirar, segurar e
-      soltar em ritmo controlado) que pode ajudar a desacelerar.
-    </p>
-  </div>
-
-  <!-- DISCLAIMER -->
-  <div class="disclaimer">
-    <div class="disclaimer-icon">i</div>
-    <p class="disclaimer-text">
-      Esta é uma experiência educativa de bem-estar tecnológico.
-      Os resultados são gerados por algoritmos de visão computacional, não
-      constituem avaliação médica ou psicológica e podem errar. Em caso de necessidade,
-      consulte um profissional de saúde qualificado.
-    </p>
-  </div>
-
-  <!-- VISÃO DE FUTURO -->
-  <div class="future-note">
-    <div class="future-note-title">◇ O que vem por aí</div>
-    <p class="future-note-text">
-      Esta análise é uma demonstração educativa de bem-estar.
-    </p>
-    <p class="future-note-text">
-      Pesquisadores estudam se tecnologias como esta poderão, um dia, ajudar a
-      perceber sinais de alerta para a saúde pela expressão facial, pela cor da
-      pele, pela voz ou pelo movimento dos olhos. Ainda é um campo de pesquisa,
-      com muitas perguntas em aberto.
-    </p>
-    <p class="future-note-text">
-      <strong>O NEURO LAB é um convite para conhecer essa discussão.</strong>
-    </p>
-  </div>
+  <!-- SAIBA MAIS -->
+  <details class="saiba" id="saiba">
+    <summary>
+      <span class="saiba-titulo">◈ Saiba mais
+        <span class="saiba-sub">Como a IA chegou nisso · Como funciona · O que vem por aí</span></span>
+    </summary>
+    <div class="saiba-corpo">
+      <section class="saiba-sec" id="secIA">
+        <div class="saiba-h">Como a IA chegou nisso</div>
+        <div id="explicaCorpo"></div>
+      </section>
+      <section class="saiba-sec">
+        <div class="saiba-h">Como funciona o NEURO LAB</div>
+        <p class="saiba-p">O scan se baseia nas pesquisas de Paul Ekman sobre expressões faciais e roda
+          inteiro no seu navegador: a imagem da câmera não é salva nem enviada.</p>
+        <p class="saiba-p">O laboratório VR usa respiração guiada no ritmo 4-4-6 (inspirar 4 s, segurar 4 s
+          e soltar 6 s), uma técnica que pode ajudar a desacelerar.</p>
+        <p class="saiba-p">Nesta versão de demonstração, o resultado existe só neste link. Para guardar,
+          salve o link ou tire um print.</p>
+      </section>
+      <section class="saiba-sec">
+        <div class="saiba-h">O que vem por aí</div>
+        <p class="saiba-p">Pesquisadores estudam se tecnologias como esta poderão, um dia, ajudar a perceber
+          sinais de alerta para a saúde pela expressão facial, pela cor da pele, pela voz ou pelo movimento
+          dos olhos. Ainda é um campo de pesquisa, com muitas perguntas em aberto.</p>
+        <p class="saiba-p"><strong>O NEURO LAB é um convite para conhecer essa discussão.</strong></p>
+      </section>
+    </div>
+  </details>
 
 </main>
 
-<!-- FOOTER -->
-<footer class="footer">
-  <div class="footer-col">
-    <div class="footer-line">NEURO LAB · Expotec <span>2026</span></div>
-    <div class="footer-line">Saúde · Bem-Estar · Tecnologia</div>
-  </div>
-  <div class="footer-col" style="align-items: flex-end">
-    <div class="footer-line">conteúdo: <span>offline</span></div>
-    <div class="footer-line">versão <span>demo</span></div>
-  </div>
+<footer>
+  <p class="aviso"><b>ⓘ</b> Projeto educativo, não é diagnóstico. Se precisar, procure um profissional de saúde.</p>
+  <p class="footer-line">NEURO LAB · Expotec 2026</p>
 </footer>
 
 <script>
 /* Preenche o relatório com o resultado da URL. Tudo via textContent:
-   nada que venha do link é interpretado como HTML. */
+   nada que venha do link é interpretado como HTML.
+   Camadas: o essencial no topo (autoavaliação, expressão em uma linha e
+   uma dica), o resto no "Saiba mais", fechado por padrão. */
 (() => {
   const r = NL_DADOS.decodificar(location.search);
   if (!r) {
     document.getElementById('comResultado').hidden = true;
     document.getElementById('semResultado').hidden = false;
+    document.getElementById('explicaCorpo').closest('.saiba-sec').hidden = true;
     return;
   }
-
   const dom = r.emotions[0];
-  const conteudo = NL_DADOS.RELATORIO[r.dominant] || NL_DADOS.RELATORIO.neutral;
+  const $ = id => document.getElementById(id);
 
   if (r.timestamp) {
     const d = r.timestamp;
-    document.getElementById('metaData').textContent =
-      d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' · ' +
-      d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    $('headerSub').textContent = 'Seu relatório · ' +
+      d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ', ' +
+      d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + ' · versão demo';
   }
 
-  document.getElementById('dominantName').textContent = dom.name;
-  if (r.manual) {
-    // Pular scan: não houve leitura do rosto, então não há porcentagem
-    document.getElementById('tituloEstado').textContent  = '◈ Emoção escolhida (sem scan)';
-    document.getElementById('dominantLabel').textContent = 'Escolhida para a demonstração';
-    document.getElementById('dominantPct').textContent   = '✓';
-    document.getElementById('dominantBar').style.width   = '100%';
-    document.getElementById('abertura').textContent = NL_DADOS.COMENTARIOS_MANUAL[r.dominant];
-  } else {
-    document.getElementById('dominantPct').textContent = dom.pct + '%';
-    document.getElementById('dominantBar').style.width = dom.pct + '%';
-    document.getElementById('abertura').textContent = conteudo.abertura;
-  }
-
-  // Emoções secundárias — alterna violeta e verde, como na feira
-  const cores = ['#7C3AED', '#00FF88'];
-  const lista = document.getElementById('emotionsList');
-  r.emotions.slice(1, 3).forEach((e, i) => {
-    const cor = cores[i % cores.length];
-    const row = document.createElement('div');
-    row.className = 'emotion-row';
-    row.innerHTML = '<span class="emotion-row-name"></span>'
-      + '<div class="emotion-row-track"><div class="emotion-row-fill"></div></div>'
-      + '<span class="emotion-row-pct"></span>';
-    row.querySelector('.emotion-row-name').textContent = e.name;
-    row.querySelector('.emotion-row-pct').textContent  = e.pct + '%';
-    const fill = row.querySelector('.emotion-row-fill');
-    fill.style.width      = e.pct + '%';
-    fill.style.background = cor;
-    fill.style.boxShadow  = '0 0 6px ' + cor;
-    lista.appendChild(row);
-  });
-  if (!lista.children.length) lista.style.marginBottom = '28px';
-
-  // "Como a IA chegou nisso": monta na primeira vez que a seção é aberta.
-  // Começa fechada; o link do cartão principal abre e rola até ela.
-  const explica = document.getElementById('explica');
-  const nota = document.getElementById('calibNote');
-  nota.hidden = r.manual || !NL_DADOS.destaquePelaCalibracao(r.emotions);
-  nota.addEventListener('click', (ev) => {
-    ev.preventDefault();
-    explica.open = true;
-    explica.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  });
-  explica.addEventListener('toggle', () => {
-    if (explica.open && !explica.dataset.montado) {
-      NL_EXPLICACAO.montar(document.getElementById('explicaCorpo'), r);
-      explica.dataset.montado = '1';
-    }
-  });
-
-  // Autoavaliação: antes (a) e depois (d), de 1 a 5
+  // 1. Autoavaliação
   const comp = NL_DADOS.comparar(r.antes, r.depois);
   if (comp) {
-    document.getElementById('secaoAutoavaliacao').hidden = false;
+    $('secaoAutoavaliacao').hidden = false;
     const preencher = (id, v) => {
-      document.getElementById(id).textContent = v ?? '—';
-      document.getElementById(id + 'Nome').textContent = v ? NL_DADOS.ESCALA[v] : 'sem resposta';
+      $(id).textContent = v ?? '—';
+      $(id + 'Nome').textContent = v ? NL_DADOS.ESCALA[v] : 'sem resposta';
     };
     preencher('moodAntes', r.antes);
     preencher('moodDepois', r.depois);
-    const delta = document.getElementById('moodDelta');
     if (comp.diff !== null) {
-      delta.textContent = comp.diff > 0 ? '+' + comp.diff : comp.diff < 0 ? '−' + (-comp.diff) : '0';
-      delta.classList.add(comp.diff > 0 ? 'sobe' : comp.diff < 0 ? 'desce' : 'igual');
+      $('moodDelta').textContent = comp.diff > 0 ? '+' + comp.diff : comp.diff < 0 ? '−' + (-comp.diff) : '0';
+      $('moodDelta').classList.add(comp.diff > 0 ? 'sobe' : comp.diff < 0 ? 'desce' : 'igual');
     }
-    const escala = document.getElementById('moodScale');
-    for (let n = 1; n <= 5; n++) {
-      const passo = document.createElement('div');
-      passo.className = 'mood-step' + (n === r.antes ? ' antes' : '') + (n === r.depois ? ' depois' : '');
-      passo.textContent = n;
-      escala.appendChild(passo);
-    }
-    document.getElementById('moodTexto').textContent = comp.texto;
+    $('moodTexto').textContent = comp.texto;
   }
 
-  const dicas = document.getElementById('dicasList');
-  conteudo.dicas.forEach((dica, i) => {
-    const card = document.createElement('div');
-    card.className = 'dica-card';
-    card.innerHTML = '<span class="dica-num"></span><p class="dica-text"></p>';
-    card.querySelector('.dica-num').textContent  = '0' + (i + 1);
-    card.querySelector('.dica-text').textContent = dica;
-    dicas.appendChild(card);
-  });
+  // 2. Expressão em destaque, em uma linha
+  const valor = $('destaqueValor');
+  valor.textContent = dom.name;
+  if (r.manual) {
+    $('destaqueLabel').textContent = 'Emoção escolhida';
+    valor.append(' ');
+    const s = document.createElement('small'); s.textContent = '(sem scan)'; valor.appendChild(s);
+  } else {
+    const s = document.createElement('small'); s.textContent = dom.pct + '%'; valor.appendChild(s);
+  }
 
-  document.getElementById('btnVR').href = '../vr/lab.html' + location.search;
+  // 3. Uma dica (NL_DADOS.dicaPara): pela autoavaliação quando ela está baixa,
+  //    senão pela expressão; com a resposta 1, também a linha do CVV
+  const { dica, apoio } = NL_DADOS.dicaPara(r);
+  $('dica').textContent = dica;
+  if (apoio) { $('apoio').textContent = apoio; $('apoio').hidden = false; }
+
+  // Saiba mais: a explicação monta na primeira abertura
+  const saiba = $('saiba');
+  const nota = $('calibNote');
+  nota.hidden = r.manual || !NL_DADOS.destaquePelaCalibracao(r.emotions);
+  const montar = () => {
+    if (saiba.dataset.montado) return;
+    NL_EXPLICACAO.montar($('explicaCorpo'), r);
+    saiba.dataset.montado = '1';
+  };
+  nota.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    montar(); // antes de rolar: com a explicação montada, a página já tem a altura final
+    saiba.open = true;
+    $('secIA').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  saiba.addEventListener('toggle', () => { if (saiba.open) montar(); });
+
+  $('btnVR').href = '../vr/lab.html' + location.search;
 })();
 </script>
-
 </body>
 </html>

@@ -6,7 +6,7 @@ O **NEURO LAB** é um projeto acadêmico desenvolvido para a **EXPOTEC 2026 da F
 
 1. **Scan de expressão facial:** a webcam estima, no próprio navegador, a presença de 7 expressões faciais (alegria, tranquilidade, surpresa, tristeza, irritação, apreensão e desconforto).
 2. **Laboratório em realidade virtual:** um ambiente 3D de cerca de um minuto, com narração e respiração guiada no ritmo 4-4-6 (inspirar 4 s, segurar 4 s e soltar 6 s), acompanhando uma esfera de luz.
-3. **Relatório de bem-estar:** o resultado do scan e três dicas práticas, em linguagem simples, abertos no celular pelo QR code.
+3. **Relatório:** a autoavaliação de antes e de depois, a expressão em destaque e uma dica prática, em linguagem simples, aberto no celular pelo QR code.
 
 Na feira, o projeto funcionou com um servidor Node.js no notebook e com o Meta Quest 3S. Este repositório traz uma **versão de demonstração** que funciona sem servidor, para qualquer pessoa testar pelo navegador, e preserva a **versão usada na feira** na pasta [`versao-feira/`](versao-feira/).
 
@@ -42,7 +42,10 @@ Na feira, o projeto funcionou com um servidor Node.js no notebook e com o Meta Q
    - **Meta Quest:** abra o link no navegador do Quest; a sessão entra em VR imersivo.
    - **Legendas:** a narração tem legendas sincronizadas, ligadas por padrão. Para ligar ou desligar, use o botão **CC** (ou a tecla **C**) no computador e no celular, a opção na tela de entrada ou, no Quest, o botão **A** do controle.
 5. Ao final, a mesma pergunta é feita de novo e a tela de encerramento leva ao relatório.
-6. O relatório mostra a autoavaliação de antes e de depois, com a diferença entre elas.
+6. O relatório é organizado em camadas, para caber em cerca de uma tela de celular:
+   - **No topo:** a autoavaliação de antes e de depois (com a diferença), a expressão em destaque em uma linha e **uma dica** para o resultado. Com resposta 1 ou 2, a dica é conversar com alguém de confiança, porque a resposta da própria pessoa vale mais que a leitura da IA; com resposta 1, aparece também o contato do CVV (188, ligação gratuita, ou cvv.org.br).
+   - **Saiba mais** (fechado por padrão): "Como a IA chegou nisso", "Como funciona o NEURO LAB" e "O que vem por aí".
+   - **No rodapé:** o aviso em uma linha.
 
 O resultado fica apenas no endereço (URL) do relatório e do VR, por exemplo `relatorio/?e=happy:72,neutral:20,surprised:5&a=3&d=4` (`a` e `d` são as respostas de antes e de depois). Nenhum dado é gravado em servidor.
 
@@ -60,7 +63,7 @@ O resultado fica apenas no endereço (URL) do relatório e do VR, por exemplo `r
 | Fontes Rajdhani e Share Tech Mono | Identidade visual (arquivos locais) |
 | GitHub Pages | Hospedagem estática |
 
-A narração foi gerada previamente em MP3 com [edge-tts](https://github.com/rany2/edge-tts) (voz pt-BR-FranciscaNeural), pelo script `versao-feira/gerar_narracao.py`. Na demonstração, as falas 02 e 03 foram regravadas com a mesma voz e textos revisados, que tratam a saúde do futuro como tema de pesquisa ("…onde pesquisadores estudam como a tecnologia pode ajudar a cuidar da saúde" e "Estes painéis ilustram ideias que a pesquisa ainda explora"). A versão da feira mantém as falas originais.
+A narração foi gerada previamente em MP3 com [edge-tts](https://github.com/rany2/edge-tts) (voz pt-BR-FranciscaNeural), pelo script `versao-feira/gerar_narracao.py`. Na demonstração, as falas 02 e 03 foram regravadas com a mesma voz e textos revisados: a 02 usa o nome único do laboratório ("Este é o Laboratório de Saúde Digital. Aqui, você conhece ideias de como a tecnologia pode ajudar a saúde.") e a 03 trata as ideias futuristas como tema de pesquisa ("Estes painéis ilustram ideias que a pesquisa ainda explora"). A versão da feira mantém as falas originais.
 
 **Versão da feira ([`versao-feira/`](versao-feira/))**
 
@@ -81,7 +84,7 @@ neurolab/
 ├── js/
 │   ├── scan.js           Detecção de expressões com face-api.js
 │   └── conteudo.js       Textos do relatório e leitura do resultado na URL
-├── relatorio/index.html  Relatório de bem-estar
+├── relatorio/index.html  Relatório (em camadas)
 ├── vr/
 │   ├── lab.html          Laboratório VR (A-Frame)
 │   ├── audio/            Narração em MP3

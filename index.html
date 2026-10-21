@@ -35,6 +35,7 @@
   --green:#00FF88;     --green-dim:#00695C;
   --amber:#FFB800;
   --white:#FFFFFF;     --offwhite:#CBD5E1;  --muted:#64748B;
+  --soft:#94A3B8; /* texto secundário que precisa ser lido; --muted fica só nos enfeites */
   --font-hud:'Share Tech Mono',monospace;
   --font-ui:'Rajdhani',sans-serif;
   --phase-color:var(--cyan);
@@ -104,8 +105,8 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
   animation:pulse-dot 2.4s ease-in-out infinite}
 .logo-text{font-family:var(--font-hud);font-size:13px;letter-spacing:.35em;
   color:var(--cyan);text-shadow:0 0 16px var(--cyan-glow)}
-.header-sub{font-family:var(--font-hud);font-size:8px;
-  letter-spacing:.2em;color:var(--muted);text-transform:uppercase}
+.header-sub{font-family:var(--font-hud);font-size:10px;
+  letter-spacing:.14em;color:var(--soft);text-transform:uppercase}
 
 /* ── STATUS BAR ───────────────────────────────────────────────── */
 .status-bar{position:absolute;top:62px;left:20px;right:20px;z-index:10;
@@ -135,11 +136,11 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
 .discover-card.c{--acc:var(--cyan)}
 .discover-card.v{--acc:var(--violet)}
 .discover-card.g{--acc:var(--green)}
-.dc-label{font-family:var(--font-hud);font-size:7px;
-  letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+.dc-label{font-family:var(--font-hud);font-size:9px;
+  letter-spacing:.08em;color:var(--soft);text-transform:uppercase}
 .dc-value{font-family:var(--font-ui);font-weight:700;
   font-size:clamp(10px,2vw,13px);color:var(--acc);letter-spacing:.04em}
-.dc-sub{font-family:var(--font-hud);font-size:7px;color:var(--muted);letter-spacing:.1em}
+.dc-sub{font-family:var(--font-hud);font-size:10px;color:var(--soft);letter-spacing:.02em}
 .dc-bar-track{width:100%;height:2px;background:rgba(255,255,255,.07);
   border-radius:1px;margin-top:2px;overflow:hidden}
 .dc-bar-fill{height:100%;border-radius:1px;background:var(--acc);
@@ -337,8 +338,8 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
 .prompt-rotator{display:flex;flex-direction:column;align-items:center;gap:5px;
   transition:opacity .5s ease,transform .5s ease}
 .prompt-rotator.fading{opacity:0;transform:translateY(4px)}
-.prompt-sub{font-family:var(--font-hud);font-size:clamp(8px,1.5vw,11px);
-  letter-spacing:.16em;color:var(--muted);text-align:center;
+.prompt-sub{font-family:var(--font-ui);font-weight:600;font-size:15px;
+  letter-spacing:.03em;color:var(--soft);text-align:center;
   padding:0 18px;transition:color .3s}
 /* aviso temporário (câmera negada, rosto não encontrado) */
 .prompt-sub.warn{color:var(--amber);line-height:1.6}
@@ -386,7 +387,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
   transition:opacity .5s cubic-bezier(.16,1,.3,1),transform .5s cubic-bezier(.16,1,.3,1)}
 .choice-panel.visible{opacity:1;transform:none;pointer-events:auto}
 .choice-panel .result-top-bar{transform:scaleX(1)}
-.choice-title{font-family:var(--font-hud);font-size:9px;letter-spacing:.22em;
+.choice-title{font-family:var(--font-hud);font-size:11px;letter-spacing:.14em;
   color:var(--violet);text-transform:uppercase;margin-bottom:6px}
 .choice-sub{font-family:var(--font-ui);font-size:clamp(12px,2.3vw,14px);
   color:var(--offwhite);line-height:1.45;margin-bottom:12px}
@@ -400,8 +401,8 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
   border-color:var(--cyan);box-shadow:0 0 12px rgba(0,229,255,.3);outline:none}
 .choice-btn.wide{grid-column:1 / -1}
 .choice-cancel{margin-top:10px;width:100%;padding:9px;cursor:pointer;
-  border:none;background:none;color:var(--muted);
-  font-family:var(--font-hud);font-size:9px;letter-spacing:.2em;text-transform:uppercase}
+  border:none;background:none;color:var(--soft);
+  font-family:var(--font-hud);font-size:11px;letter-spacing:.12em;text-transform:uppercase}
 .choice-cancel:hover{color:var(--offwhite)}
 
 /* ── AUTOAVALIAÇÃO 1–5 (antes do scan) ─────────────────────────── */
@@ -415,7 +416,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
 .mood-btn:hover,.mood-btn:focus-visible{background:rgba(0,229,255,.14);
   border-color:var(--cyan);box-shadow:0 0 12px rgba(0,229,255,.3);outline:none}
 .mood-num{font-family:var(--font-hud);font-size:clamp(18px,3.8vw,24px);color:var(--cyan);line-height:1}
-.mood-lbl{font-family:var(--font-ui);font-weight:600;font-size:clamp(9px,1.7vw,11px);
+.mood-lbl{font-family:var(--font-ui);font-weight:600;font-size:12px;
   letter-spacing:.04em;text-transform:uppercase;color:var(--offwhite);line-height:1.15;text-align:center}
 .mood-actions{display:flex;justify-content:space-between;gap:8px;margin-top:8px}
 .mood-actions .choice-cancel{width:auto;margin-top:0}
@@ -429,11 +430,11 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
 /* ── "COMO A IA CHEGOU NISSO" ─────────────────────────────────── */
 .explain-link{display:block;margin:-2px 0 2px auto;padding:2px 0;cursor:pointer;
   border:none;background:none;color:var(--cyan);opacity:.8;
-  font-family:var(--font-hud);font-size:clamp(8px,1.5vw,10px);letter-spacing:.14em;text-transform:uppercase}
+  font-family:var(--font-hud);font-size:11px;letter-spacing:.1em;text-transform:uppercase}
 .explain-link:hover{opacity:1;text-shadow:0 0 10px var(--cyan-glow)}
 .calib-note{display:block;margin:-6px 0 10px;padding:0;cursor:pointer;border:none;background:none;
-  font-family:var(--font-hud);font-size:clamp(7px,1.4vw,9px);letter-spacing:.12em;
-  text-transform:uppercase;color:var(--muted);text-align:left}
+  font-family:var(--font-hud);font-size:10px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--soft);text-align:left}
 .calib-note span{color:var(--cyan);text-decoration:underline;text-underline-offset:2px}
 .calib-note:hover span{text-shadow:0 0 8px var(--cyan-glow)}
 .calib-note[hidden]{display:none}
@@ -443,7 +444,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
 .explain-panel .choice-title{color:var(--cyan)}
 .explain-body{flex:1;min-height:0;overflow-y:auto;padding-right:6px;margin-top:4px;
   user-select:text;scrollbar-width:thin;scrollbar-color:rgba(0,229,255,.35) transparent}
-.explain-body .xp{--xp-mono:var(--font-hud);--xp-sans:var(--font-ui);--xp-h-size:9px;--xp-p-size:clamp(12px,2.3vw,14px)}
+.explain-body .xp{--xp-mono:var(--font-hud);--xp-sans:var(--font-ui);--xp-h-size:11px;--xp-p-size:clamp(12px,2.3vw,14px)}
 .explain-panel .choice-cancel{margin-top:8px}
 
 /* ── BASE: AVISO + RODAPÉ ─────────────────────────────────────────
@@ -462,8 +463,8 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
 .disc-icon{width:13px;height:13px;flex-shrink:0;border:1px solid var(--amber);
   border-radius:50%;display:flex;align-items:center;justify-content:center;
   font-size:8px;color:var(--amber);font-family:var(--font-hud);font-weight:bold}
-.disc-text{font-family:var(--font-hud);font-size:clamp(7.5px,1.5vw,9px);letter-spacing:.08em;
-  color:rgba(255,184,0,.75);text-transform:uppercase;line-height:1.5;text-align:center}
+.disc-text{font-family:var(--font-hud);font-size:10px;letter-spacing:.04em;
+  color:rgba(255,184,0,.9);text-transform:uppercase;line-height:1.5;text-align:center}
 
 /* ════════════════════════════════════════════════════════════════
    RESULT PANEL
@@ -489,7 +490,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
 
 .result-header{display:flex;justify-content:space-between;
   align-items:center;margin-bottom:11px}
-.result-title{font-family:var(--font-hud);font-size:9px;
+.result-title{font-family:var(--font-hud);font-size:11px;
   letter-spacing:.22em;color:var(--cyan);text-transform:uppercase}
 .result-ts{font-family:var(--font-hud);font-size:8px;
   color:var(--muted);letter-spacing:.1em}
@@ -547,8 +548,8 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
   opacity:0;transition:opacity .5s}
 .ai-comment-wrap.ready{opacity:1}
 .ai-label{position:absolute;top:-9px;left:8px;
-  font-family:var(--font-hud);font-size:8px;
-  letter-spacing:.15em;color:var(--violet);
+  font-family:var(--font-hud);font-size:10px;
+  letter-spacing:.12em;color:#A78BFA;
   background:rgba(5,9,20,.97);padding:0 7px}
 .ai-comment{font-family:var(--font-ui);
   font-size:clamp(12px,2.3vw,15px);
@@ -568,10 +569,10 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
   flex-shrink:0;line-height:1;
   animation:pulse-dot 1.8s ease-in-out infinite}
 .next-hint-text{flex:1}
-.next-hint-title{font-family:var(--font-hud);font-size:clamp(8px,1.6vw,10px);
-  letter-spacing:.12em;color:var(--green);text-transform:uppercase;margin-bottom:2px}
-.next-hint-sub{font-family:var(--font-hud);font-size:7px;
-  letter-spacing:.08em;color:var(--muted)}
+.next-hint-title{font-family:var(--font-hud);font-size:11px;
+  letter-spacing:.04em;color:var(--green);text-transform:uppercase;margin-bottom:2px}
+.next-hint-sub{font-family:var(--font-ui);font-weight:600;font-size:13px;
+  letter-spacing:.02em;color:var(--soft)}
 
 /* ─ Relatório: QR (para abrir no celular) + botão (para abrir aqui) ─
    Na demo o relatório é uma página estática: o resultado vai na URL. */
@@ -603,14 +604,14 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
 
 #qrCanvas{flex-shrink:0;padding:4px}
 .qr-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
-.qr-label{font-family:var(--font-hud);font-size:clamp(8px,1.6vw,10px);
-  letter-spacing:.2em;color:var(--cyan);text-transform:uppercase}
-.qr-sub{font-family:var(--font-hud);font-size:clamp(7px,1.3vw,8px);
-  letter-spacing:.08em;color:var(--muted);line-height:1.5}
+.qr-label{font-family:var(--font-hud);font-size:11px;
+  letter-spacing:.14em;color:var(--cyan);text-transform:uppercase}
+.qr-sub{font-family:var(--font-ui);font-weight:600;font-size:13px;
+  letter-spacing:.02em;color:var(--soft);line-height:1.35}
 .report-btn{align-self:flex-start;margin-top:2px;padding:7px 12px;
   border:1px solid var(--cyan);background:rgba(0,229,255,.10);color:var(--cyan);
-  font-family:var(--font-hud);font-size:clamp(8px,1.5vw,10px);
-  letter-spacing:.18em;text-transform:uppercase;text-decoration:none;
+  font-family:var(--font-hud);font-size:11px;
+  letter-spacing:.12em;text-transform:uppercase;text-decoration:none;
   transition:background .2s,box-shadow .2s}
 .report-btn:hover{background:rgba(0,229,255,.22);box-shadow:0 0 12px rgba(0,229,255,.3)}
 /* sem QR se o QR falhar ou em celular/tablet (o botão já abre o relatório ali) */
@@ -624,8 +625,8 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
 .vr-btn{
   padding:6px 14px;border:1px solid var(--green);
   background:rgba(0,255,136,.10);color:var(--green);
-  font-family:var(--font-hud);font-size:clamp(8px,1.5vw,10px);
-  letter-spacing:.18em;text-transform:uppercase;
+  font-family:var(--font-hud);font-size:11px;
+  letter-spacing:.12em;text-transform:uppercase;
   cursor:pointer;flex-shrink:0;
   transition:background .2s,box-shadow .2s}
 .vr-btn:hover{background:rgba(0,255,136,.22);
@@ -737,7 +738,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
    <div class="discover-card v">
     <div class="dc-label">Próxima etapa</div>
     <div class="dc-value">VR — 1 minuto</div>
-    <div class="dc-sub">laboratório digital</div>
+    <div class="dc-sub">respiração guiada</div>
     <div class="dc-bar-track"><div class="dc-bar-fill"></div></div>
    </div>
    <div class="discover-card g">

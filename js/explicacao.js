@@ -32,8 +32,8 @@ const NL_EXPLICACAO = (() => {
 .xp-p b{color:#fff;font-weight:700}
 .xp-row{display:grid;grid-template-columns:minmax(0,1.7fr) 1.6fr 40px;align-items:center;gap:8px;margin-bottom:6px}
 .xp-name{font-weight:700;font-size:var(--xp-p-size,13px);text-transform:uppercase;letter-spacing:.04em;
-  color:var(--xp-off);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.xp-name small{font-weight:400;text-transform:none;letter-spacing:0;color:var(--xp-mut)}
+  color:var(--xp-off);line-height:1.25}
+.xp-name small{display:inline-block;font-weight:400;text-transform:none;letter-spacing:0;color:#94A3B8}
 .xp-track{height:6px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden}
 .xp-fill{height:100%;border-radius:3px;background:rgba(203,213,225,.45)}
 .xp-pct{font-family:var(--xp-mono);font-size:var(--xp-p-size,13px);text-align:right;color:var(--xp-off)}
@@ -48,7 +48,7 @@ const NL_EXPLICACAO = (() => {
 .xp-box .xp-h{color:var(--xp-a)}
 .xp-box.info{border-color:rgba(124,58,237,.5);background:rgba(124,58,237,.07)}
 .xp-box.info .xp-h{color:#A78BFA}
-.xp-note{font-size:11px;color:var(--xp-mut);margin-top:8px;line-height:1.5}
+.xp-note{font-size:12px;color:#94A3B8;margin-top:8px;line-height:1.5}
 `;
 
   function estilo() {

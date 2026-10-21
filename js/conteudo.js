@@ -6,6 +6,7 @@
    - COMENTARIOS: frase do HUD logo após o scan (mesma da feira)
    - RELATORIO:   abertura + 3 dicas por emoção (o mesmo texto do
                   api/fallback.json usado na feira, sem chamada de API)
+   - dicaPara:    a ÚNICA dica que o relatório da demo mostra
 
    O resultado passa de uma página para outra pela própria URL:
      ?e=happy:72,neutral:20,surprised:5&m=0&t=1760000000000
@@ -127,6 +128,33 @@ const NL_DADOS = (() => {
     },
   };
 
+  /* ── UMA DICA NO RELATÓRIO ─────────────────────────────────────
+     O relatório da demo mostra só uma dica. A resposta da própria pessoa
+     vale mais que a leitura da IA: com 1 ou 2 na autoavaliação mais
+     recente, a dica é conversar com alguém. Nos outros casos, a dica
+     escolhida para a expressão em destaque. */
+  const DICA = {
+    happy:     RELATORIO.happy.dicas[0],
+    neutral:   RELATORIO.neutral.dicas[1],
+    surprised: RELATORIO.surprised.dicas[2],
+    sad:       'Repita a respiração do VR: inspire por 4 s, segure por 4 s e solte em 6 s.',
+    angry:     RELATORIO.angry.dicas[0],
+    fearful:   RELATORIO.fearful.dicas[0],
+    disgusted: RELATORIO.disgusted.dicas[1],
+  };
+  const DICA_BAIXA = 'Se puder, converse hoje com alguém de confiança, nem que seja para trocar algumas palavras.';
+  // Só com a resposta 1 (muito mal): uma linha discreta abaixo da dica
+  const APOIO = 'Se estiver difícil, você não precisa passar por isso sozinho. O CVV atende 24 horas pelo 188 (ligação gratuita) ou em cvv.org.br.';
+
+  /** { dica, apoio } para o resultado (apoio = null, a não ser com resposta 1). */
+  function dicaPara(r) {
+    const ultima = r.depois ?? r.antes;
+    return {
+      dica:  ultima !== null && ultima <= 2 ? DICA_BAIXA : (DICA[r.dominant] || DICA.neutral),
+      apoio: ultima === 1 ? APOIO : null,
+    };
+  }
+
   /* ── AUTOAVALIAÇÃO ("Como você se sente agora?") ───────────────
      Resposta da própria pessoa, de 1 a 5, antes do scan (a) e depois
      do VR (d). Opcional: quem prefere não responder fica sem o campo. */
@@ -226,6 +254,6 @@ const NL_DADOS = (() => {
     };
   }
 
-  return { EMOCOES, MODELO, destaquePelaCalibracao, COMENTARIOS, COMENTARIOS_MANUAL, RELATORIO, ESCALA, CALIBRACAO,
+  return { EMOCOES, MODELO, destaquePelaCalibracao, COMENTARIOS, COMENTARIOS_MANUAL, RELATORIO, ESCALA, CALIBRACAO, dicaPara,
            nivel, comparar, codificar, decodificar };
 })();

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#080D1A">
-<title>NEURO LAB — Laboratório Digital</title>
+<title>NEURO LAB — Laboratório VR</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='8' fill='%23080D1A'/%3E%3Ccircle cx='20' cy='20' r='11' fill='none' stroke='%2300E5FF' stroke-width='2.5'/%3E%3Ccircle cx='20' cy='20' r='4.5' fill='%2300E5FF'/%3E%3C/svg%3E">
 
 <!--
@@ -547,7 +547,7 @@ AFRAME.registerComponent('data-panel', {
     c.fillStyle = '#00E5FF'; c.font = `700 64px ${NL_FONT_UI}`;
     c.fillText('NEURO LAB', 240, cy - 26);
     c.fillStyle = '#CBD5E1'; c.font = `500 22px ${NL_FONT_UI}`;
-    c.fillText('Laboratório Digital de Bem-Estar', 242, cy + 24);
+    c.fillText('Laboratório de Saúde Digital', 242, cy + 24);
     c.fillStyle = '#64748B'; c.font = `18px ${NL_FONT_HUD}`;
     c.fillText('EXPOTEC 2026 · SCAN EMOCIONAL', 242, cy + 58);
 
@@ -563,6 +563,7 @@ AFRAME.registerComponent('data-panel', {
 :root{
   --bg:#080D1A; --cyan:#00E5FF; --violet:#7C3AED;
   --green:#00FF88; --white:#FFFFFF; --muted:#64748B;
+  --soft:#94A3B8; /* texto secundário que precisa ser lido; --muted fica só nos enfeites */
   --font-hud:'Share Tech Mono',monospace;
   --font-ui:'Rajdhani',sans-serif;
 }
@@ -582,11 +583,12 @@ body{background:var(--bg);color:var(--white);font-family:var(--font-ui);overflow
 .entry-divider{width:60px;height:1px;background:rgba(0,229,255,.3)}
 .entry-title{font-family:var(--font-ui);font-size:clamp(13px,3.5vw,20px);
   font-weight:600;color:var(--white);text-align:center;letter-spacing:.06em}
-.entry-sub{font-family:var(--font-hud);font-size:clamp(9px,2.5vw,12px);
-  color:var(--muted);letter-spacing:.12em;text-align:center;
-  max-width:300px;line-height:1.7}
-.entry-session{font-family:var(--font-hud);font-size:clamp(8px,2vw,10px);
-  color:rgba(0,229,255,.5);letter-spacing:.15em;text-align:center}
+.entry-sub{font-family:var(--font-ui);font-weight:600;font-size:clamp(15px,4vw,18px);
+  color:var(--soft);letter-spacing:.03em;text-align:center;
+  max-width:340px;line-height:1.45;padding:0 16px}
+.entry-sub strong{color:var(--cyan)}
+.entry-session{font-family:var(--font-hud);font-size:11px;
+  color:rgba(0,229,255,.75);letter-spacing:.12em;text-align:center}
 .entry-btn{
   margin-top:8px;padding:13px 34px;
   border:none;outline:none;cursor:pointer;
@@ -612,9 +614,9 @@ body{background:var(--bg);color:var(--white);font-family:var(--font-ui);overflow
   text-shadow:0 0 20px rgba(0,255,136,.5)}
 .end-title{font-family:var(--font-ui);font-size:clamp(15px,4vw,22px);
   font-weight:600;color:var(--white);text-align:center;letter-spacing:.06em}
-.end-sub{font-family:var(--font-hud);font-size:clamp(8px,2.2vw,11px);
-  color:var(--muted);letter-spacing:.12em;text-align:center;line-height:1.7;
-  max-width:280px}
+.end-sub{font-family:var(--font-ui);font-weight:600;font-size:clamp(15px,4vw,18px);
+  color:var(--soft);letter-spacing:.03em;text-align:center;line-height:1.45;
+  max-width:360px;padding:0 16px}
 .end-hint{font-family:var(--font-hud);font-size:clamp(9px,2.5vw,12px);
   color:var(--cyan);letter-spacing:.15em;text-align:center;
   animation:pulse-text 2s ease-in-out infinite}
@@ -626,7 +628,7 @@ body{background:var(--bg);color:var(--white);font-family:var(--font-ui);overflow
   color:rgba(0,229,255,.45);letter-spacing:.1em;display:none}
 
 /* ── LEGENDAS (computador e celular) ─────────────────────────── */
-#legenda{position:fixed;left:50%;bottom:calc(62px + env(safe-area-inset-bottom));
+#legenda{position:fixed;left:50%;bottom:calc(32px + env(safe-area-inset-bottom));
   transform:translateX(-50%);z-index:55;pointer-events:none;
   width:max-content;max-width:min(720px,calc(100% - 32px));
   padding:9px 16px 10px 18px;background:rgba(8,13,26,.84);
@@ -642,7 +644,7 @@ body{background:var(--bg);color:var(--white);font-family:var(--font-ui);overflow
 .cc-btn[aria-pressed="false"]{border-color:rgba(100,116,139,.6);color:var(--muted);text-decoration:line-through}
 .entry-cc{margin-top:-6px;padding:6px 12px;cursor:pointer;
   border:1px solid rgba(0,229,255,.45);background:none;color:var(--cyan);
-  font-family:var(--font-hud);font-size:clamp(9px,2.4vw,11px);letter-spacing:.14em;text-transform:uppercase}
+  font-family:var(--font-hud);font-size:12px;letter-spacing:.1em;text-transform:uppercase}
 .entry-cc[aria-pressed="false"]{border-color:rgba(100,116,139,.6);color:var(--muted)}
 
 /* ── FASE INDICATOR ──────────────────────────────────────────── */
@@ -652,9 +654,9 @@ body{background:var(--bg);color:var(--white);font-family:var(--font-ui);overflow
   color:rgba(0,229,255,.3);letter-spacing:.15em;
   text-transform:uppercase;display:none}
 
-.entry-controls{font-family:var(--font-hud);font-size:clamp(8px,2vw,10px);
-  color:rgba(0,255,136,.7);letter-spacing:.12em;text-align:center;
-  max-width:320px;line-height:1.7;padding:0 16px}
+.entry-controls{font-family:var(--font-ui);font-weight:600;font-size:clamp(14px,3.6vw,16px);
+  color:rgba(0,255,136,.9);letter-spacing:.03em;text-align:center;
+  max-width:360px;line-height:1.45;padding:0 16px}
 
 /* ── BOTÕES DO FIM (demo) ────────────────────────────────────── */
 .end-actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;
@@ -674,29 +676,30 @@ body{background:var(--bg);color:var(--white);font-family:var(--font-ui);overflow
   border:.5px solid rgba(0,229,255,.35);background:rgba(0,229,255,.04)}
 .end-mood-q{font-family:var(--font-ui);font-weight:600;font-size:clamp(15px,4vw,19px);
   color:var(--white);text-align:center;letter-spacing:.04em}
-.end-mood-sub{font-family:var(--font-hud);font-size:clamp(8px,2.2vw,10px);color:var(--muted);
-  letter-spacing:.12em;text-align:center;text-transform:uppercase}
+.end-mood-sub{font-family:var(--font-hud);font-size:12px;color:var(--soft);
+  letter-spacing:.08em;text-align:center;text-transform:uppercase}
 .end-mood-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;width:100%;margin-top:4px}
 .end-mood-btn{display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 2px 10px;
   cursor:pointer;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.06);color:var(--white)}
 .end-mood-btn:hover,.end-mood-btn:focus-visible{background:rgba(0,229,255,.16);border-color:var(--cyan);
   box-shadow:0 0 12px rgba(0,229,255,.3);outline:none}
 .end-mood-num{font-family:var(--font-hud);font-size:clamp(18px,5vw,24px);color:var(--cyan);line-height:1}
-.end-mood-lbl{font-family:var(--font-ui);font-weight:600;font-size:clamp(9px,2.4vw,11px);
+.end-mood-lbl{font-family:var(--font-ui);font-weight:600;font-size:12px;
   text-transform:uppercase;color:#CBD5E1;line-height:1.15;text-align:center}
-.end-mood-skip{border:none;background:none;cursor:pointer;color:var(--muted);padding:6px;
-  font-family:var(--font-hud);font-size:clamp(8px,2.2vw,10px);letter-spacing:.18em;text-transform:uppercase}
+.end-mood-skip{border:none;background:none;cursor:pointer;color:var(--soft);padding:6px;
+  font-family:var(--font-hud);font-size:12px;letter-spacing:.1em;text-transform:uppercase}
 .end-mood-skip:hover{color:#CBD5E1}
-.end-mood-ok{font-family:var(--font-hud);font-size:clamp(9px,2.4vw,11px);color:var(--green);
+.end-mood-ok{font-family:var(--font-hud);font-size:12px;color:var(--green);
   letter-spacing:.12em;text-align:center;text-transform:uppercase}
 
-/* ── DICA DE CONTROLES DURANTE A SESSÃO (fora do VR imersivo) ── */
-#look-hint{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));
+/* ── DICA DE CONTROLES DURANTE A SESSÃO (fora do VR imersivo) ──
+   No alto, abaixo da linha do CC e do cronômetro: embaixo fica a legenda. */
+#look-hint{position:fixed;left:50%;top:calc(46px + env(safe-area-inset-top));
   transform:translateX(-50%);z-index:50;pointer-events:none;
   padding:8px 14px;border:.5px solid rgba(0,229,255,.35);
   background:rgba(8,13,26,.78);white-space:nowrap;
-  font-family:var(--font-hud);font-size:clamp(9px,2.4vw,11px);
-  color:rgba(0,229,255,.85);letter-spacing:.14em;text-transform:uppercase;
+  font-family:var(--font-hud);font-size:12px;
+  color:var(--cyan);letter-spacing:.1em;text-transform:uppercase;
   opacity:0;transition:opacity .8s}
 #look-hint.visible{opacity:1}
 
@@ -713,7 +716,7 @@ body{background:var(--bg);color:var(--white);font-family:var(--font-ui);overflow
 <div id="entry-screen">
   <div class="entry-logo">NEURO LAB</div>
   <div class="entry-divider"></div>
-  <div class="entry-title">Laboratório Digital de Bem-Estar</div>
+  <div class="entry-title">Laboratório de Saúde Digital</div>
   <div class="entry-sub" id="entrySubText">
     Uma experiência de 1 minuto.<br>
     Respire fundo e siga o laboratório.
@@ -994,15 +997,16 @@ const TIMELINE = [
 
 /* ── LEGENDAS DA NARRAÇÃO ───────────────────────────────────────────
    O mesmo texto de cada MP3 (vr/audio/). Falas longas vêm em partes, para
-   ter no máximo 2 linhas na tela; cada parte fica na tela proporcional ao
+   ter no máximo 2 linhas na tela. Cada parte termina no fim de uma frase;
+   se não der, a parte termina e a seguinte começa com "…"; cada parte fica na tela proporcional ao
    seu tamanho. A legenda entra junto com a fala e sai quando a voz termina
    (+ LEGENDA_FOLGA) ou quando a próxima fala começa. Se o áudio não
    carregar, a legenda aparece mesmo assim (tempo estimado pelo texto).
    Ao mudar uma fala, regravar o MP3 com o mesmo texto.               */
 const LEGENDAS = {
   '01_boas_vindas':       'Bem-vindo ao NEURO LAB.',
-  '02_laboratorio':       ['Este é um laboratório de saúde do futuro,',
-                           'onde pesquisadores estudam como a tecnologia pode ajudar a cuidar da saúde.'],
+  '02_laboratorio':       ['Este é o Laboratório de Saúde Digital.',
+                           'Aqui, você conhece ideias de como a tecnologia pode ajudar a saúde.'],
   '03_olhe_ao_redor':     ['Olhe ao seu redor.', 'Estes painéis ilustram ideias que a pesquisa ainda explora.'],
   '04_emocao_feliz':      'Durante o scan, sua expressão mostrou sinais de alegria.',
   '04_emocao_tranquilo':  'Durante o scan, sua expressão mostrou sinais de tranquilidade.',
@@ -1205,8 +1209,8 @@ function _atualizarTelaEntrada() {
   const emo = _sessionData?.emotions?.[0];
   if (emo) {
     // textContent no nome — o dado vem da URL, não injetar HTML
-    sub.innerHTML = (_sessionData.manual ? 'Você escolheu: ' : 'Seu scan registrou: ')
-      + '<strong></strong>.<br>Vamos explorar esse estado juntos.';
+    sub.innerHTML = (_sessionData.manual ? 'Emoção escolhida: ' : 'Expressão em destaque: ')
+      + '<strong></strong><br>Vamos fazer uma pausa juntos.';
     sub.querySelector('strong').textContent = emo.name;
   } else {
     sub.innerHTML = _ENTRY_SUB_PADRAO;
@@ -1316,7 +1320,7 @@ function _iniciarLinhaDoTempo() {
 function _cenaEntrada() {
   _tela({
     1: 'NEURO LAB',
-    2: ['LABORATÓRIO DE SAÚDE DO FUTURO', 0.12],
+    2: ['LABORATÓRIO DE SAÚDE DIGITAL', 0.12],
     3: 'Pesquisa: sinais antes dos sintomas?',
     4: ['◇ CONCEITO', 0.065, '#FFB800'], // ideia futurista, não algo que o site faz
   });
