@@ -63,7 +63,7 @@ O resultado fica apenas no endereço (URL) do relatório e do VR, por exemplo `r
 | Fontes Rajdhani e Share Tech Mono | Identidade visual (arquivos locais) |
 | GitHub Pages | Hospedagem estática |
 
-A narração foi gerada previamente em MP3 com [edge-tts](https://github.com/rany2/edge-tts) (voz pt-BR-FranciscaNeural), pelo script `versao-feira/gerar_narracao.py`. Na demonstração, as falas 02 e 03 foram regravadas com a mesma voz e textos revisados: a 02 usa o nome único do laboratório ("Este é o Laboratório de Saúde Digital. Aqui, você conhece ideias de como a tecnologia pode ajudar a saúde.") e a 03 trata as ideias futuristas como tema de pesquisa ("Estes painéis ilustram ideias que a pesquisa ainda explora"). A versão da feira mantém as falas originais.
+A narração foi gerada previamente em MP3 com [edge-tts](https://github.com/rany2/edge-tts) (voz pt-BR-FranciscaNeural), pelo script `versao-feira/gerar_narracao.py`. Na demonstração, as falas 02 e 03 foram regravadas com a mesma voz e textos revisados: a 02 usa o nome único do laboratório ("Este é o Laboratório de Saúde Digital. Aqui, você conhece ideias de tecnologia para cuidar da saúde.") e a 03 trata as ideias futuristas como tema de pesquisa ("Estes painéis ilustram ideias que a pesquisa ainda explora"). A versão da feira mantém as falas originais.
 
 **Versão da feira ([`versao-feira/`](versao-feira/))**
 

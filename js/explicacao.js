@@ -140,7 +140,8 @@ const NL_EXPLICACAO = (() => {
     ordenadas.forEach(e => {
       const linha = el('div', 'xp-row' + (e.key === r.emotions[0].key ? ' top' : ''));
       const nome = el('div', 'xp-name', e.name);
-      nome.appendChild(el('small', null, ` (${NL_DADOS.MODELO[e.key] || e.key})`)); // nome no modelo
+      // espaço fora do <small>: dentro de um inline-block ele some na tela
+      nome.append(' ', el('small', null, `(${NL_DADOS.MODELO[e.key] || e.key})`)); // nome no modelo
       const trilho = el('div', 'xp-track');
       const fill = el('div', 'xp-fill');
       fill.style.width = Math.max(0, Math.min(100, e.pct)) + '%';
