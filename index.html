@@ -14,7 +14,7 @@
 <meta property="og:image" content="https://pedroluccagarola.github.io/neurolab/docs/imagens/capa-link.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="627">
-<meta property="og:image:alt" content="Logo do NEURO LAB ao lado da tela do scan emocional e do laboratório em realidade virtual">
+<meta property="og:image:alt" content="Logo do NEURO LAB ao lado da tela do scan de expressão facial e do laboratório em realidade virtual">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='8' fill='%23080D1A'/%3E%3Ccircle cx='20' cy='20' r='11' fill='none' stroke='%2300E5FF' stroke-width='2.5'/%3E%3Ccircle cx='20' cy='20' r='4.5' fill='%2300E5FF'/%3E%3C/svg%3E">
 <!-- Tudo local (lib/): sem CDN e sem servidor. Caminhos relativos para
@@ -743,7 +743,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
    </div>
    <div class="discover-card g">
     <div class="dc-label">Você leva</div>
-    <div class="dc-value">Relatório + dicas</div>
+    <div class="dc-value">Relatório + dica</div>
     <div class="dc-sub">para o seu resultado</div>
     <div class="dc-bar-track"><div class="dc-bar-fill"></div></div>
    </div>
@@ -773,7 +773,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
   <div class="rail right" id="railRight">
    <div class="rail-item">
     <div class="rail-value">7</div>
-    <div class="rail-label">Emoções</div>
+    <div class="rail-label">Expressões</div>
    </div>
    <div class="rail-tick"></div>
    <div class="rail-item">
@@ -855,7 +855,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--white);
   <!-- SCAN BUTTON + PULAR SCAN -->
   <div class="scan-btn-wrap" id="scanBtnWrap">
    <button class="scan-btn" id="scanBtn" onclick="startScan()">
-    <span class="scan-btn-label">► INICIAR SCAN EMOCIONAL</span>
+    <span class="scan-btn-label">► INICIAR SCAN</span>
    </button>
    <button class="skip-btn" id="skipBtn" onclick="pularScan()" title="Escolher uma emoção sem usar a câmera">
     Pular<br>scan
@@ -1392,7 +1392,7 @@ async function prepararCamera(){
 
   scanBtn.disabled = false;
   document.getElementById('skipBtn').disabled = false;
-  label.textContent = '► INICIAR SCAN EMOCIONAL';
+  label.textContent = '► INICIAR SCAN';
   if(!camera){
     document.getElementById('camStatus').textContent = 'DESLIGADA';
     return false;
@@ -1944,7 +1944,7 @@ function resetScan(){
 
   const btn=document.getElementById('scanBtn');
   btn.disabled=false;
-  btn.querySelector('.scan-btn-label').textContent='► INICIAR SCAN EMOCIONAL';
+  btn.querySelector('.scan-btn-label').textContent='► INICIAR SCAN';
   document.getElementById('skipBtn').disabled=false;
   document.getElementById('aiStatus').textContent ='PRONTO';
   document.getElementById('camStatus').textContent='DESLIGADA';
@@ -1968,7 +1968,7 @@ const IdleRotator = (() => {
     ['A IA analisa sua expressão',   'em tempo real'],
     ['1 minuto que vai',             'te surpreender'],
     ['Análise de expressão',         'facial ao vivo'],
-    ['Seu relatório com dicas',      'te espera'],
+    ['Seu relatório com uma dica',   'te espera'],
   ];
   const INTERVALO = 4000; /* tempo de cada frase na tela */
   const FADE      = 500;  /* igual ao transition do .prompt-rotator */

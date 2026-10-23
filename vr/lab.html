@@ -549,7 +549,7 @@ AFRAME.registerComponent('data-panel', {
     c.fillStyle = '#CBD5E1'; c.font = `500 22px ${NL_FONT_UI}`;
     c.fillText('Laboratório de Saúde Digital', 242, cy + 24);
     c.fillStyle = '#64748B'; c.font = `18px ${NL_FONT_HUD}`;
-    c.fillText('EXPOTEC 2026 · SCAN EMOCIONAL', 242, cy + 58);
+    c.fillText('EXPOTEC 2026 · SCAN DE EXPRESSÃO', 242, cy + 58);
 
     const sy = 20 + ((t * 60) % (H - 40));
     c.fillStyle = 'rgba(0,229,255,.18)';
@@ -896,7 +896,7 @@ body{background:var(--bg);color:var(--white);font-family:var(--font-ui);overflow
     <a-entity position="0 1.7 -5" data-panel="title:GUIA RESPIRATÓRIO; tag:GUIA; kind:gauge; color:#00FF88; interval:200"></a-entity>
   </a-entity>
   <a-entity rotation="0 -68 0">
-    <a-entity position="0 1.7 -5" data-panel="title:ESPECTRO EMOCIONAL; kind:bars; color:#7C3AED; interval:500"></a-entity>
+    <a-entity position="0 1.7 -5" data-panel="title:ESPECTRO DE EXPRESSÕES; kind:bars; color:#7C3AED; interval:500"></a-entity>
   </a-entity>
   <a-entity rotation="0 -115 0">
     <a-entity position="0 1.7 -5" data-panel="title:STATUS DO SISTEMA; kind:status; color:#00E5FF; interval:500"></a-entity>
