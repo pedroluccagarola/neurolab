@@ -2,11 +2,7 @@
 
 ![NEURO LAB: scan de expressão facial, laboratório em realidade virtual e relatório de bem-estar](docs/imagens/capa-link.png)
 
-O **NEURO LAB** é um projeto acadêmico desenvolvido para a **EXPOTEC 2026 da FORTEC**, com o tema saúde, bem-estar e tecnologia. A experiência tem três etapas:
-
-1. **Scan de expressão facial:** a webcam estima, no próprio navegador, a presença de 7 expressões faciais (alegria, tranquilidade, surpresa, tristeza, irritação, apreensão e desconforto).
-2. **Laboratório em realidade virtual:** um ambiente 3D de cerca de um minuto, com narração e respiração guiada no ritmo 4-4-6 (inspirar 4 s, segurar 4 s e soltar 6 s), acompanhando uma esfera de luz.
-3. **Relatório:** a autoavaliação de antes e de depois, a expressão em destaque e uma dica prática, em linguagem simples, aberto no celular pelo QR code.
+O **NEURO LAB** é um projeto acadêmico desenvolvido para a **EXPOTEC 2026 da FORTEC**, com o tema saúde, bem-estar e tecnologia. A experiência tem três etapas: **scan de expressão facial**, **laboratório em realidade virtual** e **relatório**.
 
 Na feira, o projeto funcionou com um servidor Node.js no notebook e com o Meta Quest 3S. Este repositório traz uma **versão de demonstração** que funciona sem servidor, para qualquer pessoa testar pelo navegador, e preserva a **versão usada na feira** na pasta [`versao-feira/`](versao-feira/).
 
@@ -16,25 +12,34 @@ Na feira, o projeto funcionou com um servidor Node.js no notebook e com o Meta Q
 
 **https://pedroluccagarola.github.io/neurolab/**
 
-| Tela inicial | Resultado | Relatório |
-|---|---|---|
-| ![Tela inicial do scan](docs/imagens/interface-inicio.png) | ![Painel de resultado com o QR code do relatório](docs/imagens/interface-resultado.png) | ![Relatório de bem-estar no celular](docs/imagens/relatorio.png) |
+| Autoavaliação | Resultado | Como a IA chegou nisso | Relatório |
+|---|---|---|---|
+| ![Pergunta "Como você se sente agora?" com a escala de 1 a 5](docs/imagens/interface-autoavaliacao.png) | ![Painel de resultado com o QR code do relatório](docs/imagens/interface-resultado.png) | ![Explicação com as 7 expressões, a calibração e o limite da IA](docs/imagens/interface-explicacao.png) | ![Relatório no celular com a autoavaliação de antes e de depois](docs/imagens/relatorio.png) |
 
-| Laboratório VR | Respiração guiada |
+| Laboratório VR com legendas | Respiração guiada |
 |---|---|
-| ![Laboratório VR com os painéis de dados](docs/imagens/vr-paineis-direita.png) | ![Esfera da respiração guiada no laboratório VR](docs/imagens/vr-respiracao.png) |
+| ![Painéis ilustrativos do laboratório VR com a legenda da narração](docs/imagens/vr-legendas.png) | ![Esfera da respiração guiada com a legenda "Inspire devagar."](docs/imagens/vr-respiracao.png) |
 
 *As porcentagens das capturas são valores de exemplo.*
+
+## Funcionalidades
+
+- **Autoavaliação antes e depois:** a pergunta "Como você se sente agora?" (de 1 a 5) aparece antes do scan e no fim do VR. A resposta é opcional, e o relatório compara as duas.
+- **Scan de expressão facial:** a webcam estima, no próprio navegador, 7 expressões faciais (alegria, tranquilidade, surpresa, tristeza, irritação, apreensão e desconforto). O resultado é a média de 5 leituras, com uma calibração para a expressão neutra. A câmera é desligada logo após a captura.
+- **Pular scan:** quem não quer ou não pode usar a câmera escolhe uma emoção e segue a demonstração.
+- **Como a IA chegou nisso:** mostra as 7 porcentagens, explica a calibração com os números do resultado e deixa claro o limite: a IA lê expressões do rosto, não sentimentos.
+- **Laboratório em realidade virtual:** cerca de um minuto, com narração, legendas sincronizadas e respiração guiada no ritmo 4-4-6 (inspirar 4 s, segurar 4 s e soltar 6 s), acompanhando uma esfera de luz. Funciona no computador, no celular e no Meta Quest.
+- **Relatório:** a autoavaliação de antes e de depois, a expressão em destaque e uma dica prática, em cerca de uma tela de celular. Abre no celular pelo QR code, e nada é gravado em servidor.
 
 ## Como usar
 
 1. Abra o link da demonstração.
 2. Escolha uma das opções. Antes de começar, a página pergunta **"Como você se sente agora?"** (escala de 1 a 5); a resposta é opcional.
-   - **Iniciar scan emocional:** o navegador pede permissão para usar a câmera. Posicione o rosto na área indicada e aguarde a contagem. A câmera é desligada logo após a captura.
+   - **Iniciar scan:** o navegador pede permissão para usar a câmera. Posicione o rosto na área indicada e aguarde a contagem. A câmera é desligada logo após a captura.
    - **Pular scan:** para quem não quer ou não pode usar a câmera. Basta escolher uma emoção para seguir a demonstração.
 3. No painel de resultado:
    - **Abrir relatório** mostra o relatório nesta tela; o **QR code** abre o mesmo relatório no celular.
-   - **Como a IA chegou nisso** mostra as 7 expressões estimadas, explica a calibração e os limites da IA (também disponível no relatório).
+   - **Como a IA chegou nisso** mostra as 7 expressões estimadas, explica a calibração e os limites da IA (também disponível no relatório). Quando a calibração muda a expressão em destaque, o painel avisa com "Em destaque pela calibração · ver explicação".
    - **Entrar** abre o laboratório em realidade virtual.
 4. No laboratório VR, clique em **Entrar no laboratório** com o som ligado:
    - **Computador:** arraste com o mouse para olhar ao redor.
@@ -48,6 +53,18 @@ Na feira, o projeto funcionou com um servidor Node.js no notebook e com o Meta Q
    - **No rodapé:** o aviso em uma linha.
 
 O resultado fica apenas no endereço (URL) do relatório e do VR, por exemplo `relatorio/?e=happy:72,neutral:20,surprised:5&a=3&d=4` (`a` e `d` são as respostas de antes e de depois). Nenhum dado é gravado em servidor.
+
+## Depois da feira
+
+Depois da EXPOTEC, a demonstração online recebeu estas melhorias:
+
+- **Autoavaliação antes e depois:** a pessoa responde "Como você se sente agora?" no início e no fim do VR, e o relatório compara as duas respostas. Com resposta 1 ou 2, a dica passa a ser conversar com alguém de confiança; com resposta 1, o relatório mostra também o contato do CVV.
+- **Transparência da IA:** "Como a IA chegou nisso" mostra as 7 expressões estimadas, explica a calibração com os números do resultado e os limites do modelo.
+- **Legendas no VR:** sincronizadas com a narração, ligadas por padrão e com opção para desligar.
+- **Relatório simplificado:** o essencial cabe em uma tela (autoavaliação, expressão em destaque e uma dica); o restante fica em "Saiba mais".
+- **Revisão de textos:** o site não afirma o que o sistema não faz. Ele fala em expressões do rosto, não em sentimentos; deixa claro que a autoavaliação não é uma medição; e marca as ideias futuristas do VR como ilustrativas ou como conceito.
+
+Também ficaram maiores e com mais contraste os textos que precisam ser lidos, e o laboratório passou a ter um nome único: Laboratório de Saúde Digital.
 
 ## Tecnologias utilizadas
 
@@ -83,7 +100,8 @@ neurolab/
 ├── index.html            Tela do scan (HUD)
 ├── js/
 │   ├── scan.js           Detecção de expressões com face-api.js
-│   └── conteudo.js       Textos do relatório e leitura do resultado na URL
+│   ├── conteudo.js       Textos do relatório e leitura do resultado na URL
+│   └── explicacao.js     "Como a IA chegou nisso" (painel e relatório)
 ├── relatorio/index.html  Relatório (em camadas)
 ├── vr/
 │   ├── lab.html          Laboratório VR (A-Frame)
@@ -124,14 +142,14 @@ O código foi escrito com o **Claude** como principal ferramenta de desenvolvime
 
 **Conexão do Meta Quest sem rede compartilhada.** O Quest precisava abrir o laboratório VR servido pelo notebook, mas não havia garantia de uma rede compartilhada entre os dois: redes de escola costumam bloquear a comunicação entre aparelhos. A solução foi conectar o Quest por cabo USB-C e usar `adb reverse tcp:3000 tcp:3000`: o Quest acessa `localhost:3000` e a conexão chega ao servidor do notebook pelo cabo, sem depender do Wi-Fi. O script `INICIAR_FEIRA.bat` automatiza o processo (localiza o Quest entre os dispositivos USB, executa o `adb reverse` e desativa o sensor de proximidade para a tela não apagar entre visitantes). Como o Quest sempre abre o mesmo endereço, o botão **Entrar** do computador registra no servidor qual sessão deve ser exibida no óculos.
 
-**Calibração da emoção neutra.** Com o rosto em repouso, o modelo tende a apontar "neutro" como emoção principal, mesmo quando há sinais leves de outra expressão. Foram definidas três regras: as demais emoções recebem um peso de 1,5 apenas para a ordenação; "neutro" só fica em destaque com pelo menos 70%; e outra emoção só assume o destaque com pelo menos 15%. As porcentagens exibidas continuam sendo as calculadas pelo modelo, e o resultado é a média de várias leituras seguidas.
+**Calibração da expressão neutra.** Com o rosto em repouso, o modelo tende a apontar "neutro" como expressão principal, mesmo quando há sinais leves de outra expressão. Foram definidas três regras: as demais expressões recebem um peso de 1,5 apenas para a ordenação; "neutro" só fica em destaque com pelo menos 70%; e outra expressão só assume o destaque com pelo menos 15%. As porcentagens exibidas continuam sendo as calculadas pelo modelo, e o resultado é a média de várias leituras seguidas.
 
-**Linguagem acessível no relatório.** O relatório precisava ser entendido por visitantes de qualquer idade. Os textos do relatório, do painel e da narração falam em "sinais na expressão" em vez de afirmar o que a pessoa sente, evitam termos técnicos e diagnósticos e oferecem dicas práticas para aplicar no mesmo dia.
+**Linguagem acessível no relatório.** O relatório precisava ser entendido por visitantes de qualquer idade. Os textos do relatório, do painel e da narração falam em "sinais na expressão" em vez de afirmar o que a pessoa sente, evitam termos técnicos e diagnósticos e oferecem uma dica prática para aplicar no mesmo dia.
 
 ## Privacidade
 
 - O vídeo da webcam é analisado pelo face-api.js no próprio navegador. Nenhum quadro é gravado, exportado ou enviado pela rede.
-- A câmera só é ligada ao clicar em **Iniciar scan emocional** e é desligada logo após a captura.
+- A câmera só é ligada ao clicar em **Iniciar scan** e é desligada logo após a captura.
 - O resultado (as porcentagens e, se a pessoa responder, a autoavaliação de 1 a 5) fica no endereço do relatório; não há banco de dados nem servidor na demonstração.
 - A única informação guardada no navegador é a preferência de legendas (ligadas ou desligadas), que não sai do aparelho.
 - Os dados das sessões da feira não fazem parte deste repositório.
